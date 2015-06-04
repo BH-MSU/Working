@@ -28,15 +28,49 @@ req.pcg(all.pcg)
 # Warning in install.packages : package 'tmcn' is not available (for R version 3.2.0)
 
 #--------------------------------
+e <- new.env()
 
-df <- read.csv("FO_Increased.csv")
-df <- read.csv("FO_Dropped.csv")
-df <- read.csv("FO_Same.csv")
-df <- read.csv("FO_Total.csv")
-df <- read.csv("Australia.csv")
+TMV <- function(){
+  
+  message("| Welcome to MSU Text Mining & Visualization Tool! \n")
+  cat("| Please prepare your data as: ", 
+      "|   1. a *.csv file;", 
+      "|   2. with 1 single column;",  
+      "|   3. without headline.", "", sep = "\n")
+  
+  # STEP 1 Input data
+  # check ncol == 1
+  # df <- na.omit(df)
+  raw <- readline("| Please enter the data file name: ")
+  cat("\n")
+  
+  # STEP 2 Treatments
+  
+  # STEP 3 Descriptive Analysis
+  # 1. Text: total words number, number of comments, summary(freq)
+  # 2. Frequency Plot (1. Top 20 words; 2. quarter quantiles positions)
+  
+  # STEP 4 
+  # Q1: Sparsity? (big loop) Q2: Additional stopwords? 
+  # warning: blue oral -> blueoral
+  
+  # STEP 5 Visualization
+  # remarks: small loops, ask preferred parameters for plots, 
+  #          if satisfied, save useful objects for final output
+  # 1. Frequency Plot: ncol?
+  # 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
+  # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
+  #    Correlation output csv
+  # 4.0 hclust
+  # 4.1 rect.hclust: k?
+  # 4.2 clust: automatic k?
+  # 5 Topic Modeling
+  
+  # STEP 6 final output
+  
+}
 
-i <- 1
-i <- 2
+
 
 sub_cont <- Corpus(VectorSource(df[complete.cases(df[, i]), i]))
 
