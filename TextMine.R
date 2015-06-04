@@ -32,7 +32,9 @@ e <- new.env()
 
 TMV <- function(){
   
-  message("| Welcome to MSU Text Mining & Visualization Tool! \n")
+  message("| Welcome to MSU Text Mining & Visualization (TMV) Tool! \n")
+  message("| The tool will provide you Basic Descriptive Analysis, as well as ")
+  message("| Simple Mining and Visulizations based on your data. \n")
   cat("| Please prepare your data as: ", 
       "|   1. a *.csv file;", 
       "|   2. with 1 single column;",  
@@ -41,19 +43,89 @@ TMV <- function(){
   # STEP 1 Input data
   # check ncol == 1
   # df <- na.omit(df)
-  raw.name <- readline("| Please enter the data file name: ")
-  cat("\n")
-  
+  repeat{
+    raw.name <- readline("| Please enter the data file name: ")
+    cat("\n")
+    endstr <- substr(raw.name, nchar(raw.name)-3, nchar(raw.name))
+    if(!endstr == ".csv"){
+      message('| Only "*.csv" file is acceptable! \n')
+    } else {
+      raw <- read.csv(raw.name, header = FALSE, stringsAsFactors = FALSE)
+      raw <- na.omit(raw)
+      if(!ncol(raw)==1){
+        message("| Please confirm that your data has 1 single column! \n")
+      } else {
+        e$raw <- raw
+        break
+      }
+    }
+  }
   
   # STEP 2 Treatments
+  # turn data frame into corpus: raw corpus
+  e$rawc <- Corpus(VectorSource(e$raw))
+  
+  e$corpus <- e$rawc %>% 
+    tm_map(content_transformer(tolower)) %>%
+    tm_map(removeWords, stopwords("english")[c(-(81:98), -(165:167))])
+  # retain "not" meaning words
+  # change them all to "no"
+  change <- content_transformer(function(x, from, to) gsub(from, to, x))
+  for(j in c(81:98, 166:167)) {
+    e$corpus <- tm_map(e$corpus, change, stopwords("english")[j], "no")
+  }
+  
+  sub_cont <- sub_cont %>% 
+    tm_map(removePunctuation) %>% 
+    tm_map(stripWhitespace) %>%
+    tm_map(stemDocument) %>%
+    tm_map(removeNumbers)
   
   # STEP 3 Descriptive Analysis
   # 1. Text: total words number, number of comments, summary(freq)
   # 2. Frequency Plot (1. Top 20 words; 2. quarter quantiles positions)
   
-  # STEP 4 
-  # Q1: Sparsity? (big loop) Q2: Additional stopwords? 
-  # warning: blue oral -> blueoral
+  # STEP 4  Deeper Analysis Preparation
+  # warning: e.g. blue oral -> blueoral
+  message("| TMV Tool can only get the analytic results for single words. ")
+  message('| So if you have phrases like "new world" which you would ')
+  message('| like to treat them as one word when analysing, please ')
+  message('| replace them with "newworld" in Excel and restart the tool. \n')
+  
+  # Q1: Additional stopwords?
+  repeat{
+    repeat{
+      message("| Do you have any Additional Stopwords? ")
+      message("| If none, just press <Enter> without typing any letters. ")
+      stps <- readline('| Please specify (use comma "," to split words): ')
+      cat("\n")
+      if(!all(strsplit(tolower(stps), "") %in% c(" ", ",", "", letters))){
+        message("| Unacceptable character is entered! Please type again! \n")
+      } else break
+    }
+    stops <- strsplit(gsub(" ", "", tolower(stps)), ",")[[1]]
+    if(length(stops) == 0) {
+      message("| You don't need any additional stopwords. ")
+    } else {
+      message("| The new stopword(s) that you specified: ")
+      cat(stops, sep = ", ")
+    }
+    repeat{
+      opt <- readline("| Could you confirm (Y/N)? ")
+      if(!toupper(opt) %in% c("Y", "N")){
+        message('| Only "Y" or "N" is acceptable! ')
+      } else break
+    }
+    if(toupper(opt) == "Y") {
+        e$stops <- stops
+        break
+    }
+  }
+  
+  
+  
+  # Q1: Sparsity? (big loop) 
+  
   
   # STEP 5 Visualization
   # remarks: small loops, ask preferred parameters for plots, 
@@ -73,29 +145,6 @@ TMV <- function(){
 
 
 
-sub_cont <- Corpus(VectorSource(df[complete.cases(df[, i]), i]))
-
-sub_cont <- sub_cont %>% 
-            tm_map(content_transformer(tolower)) %>%
-            tm_map(removeWords, stopwords("english")[c(-81:-98, -160, -165:-167)])
-# [160] "more"
-# others: not
-
-change <- content_transformer(function(x, from, to) gsub(from, to, x))
-for(j in c(81:98, 166)) {
-  sub_cont <- tm_map(sub_cont, change, stopwords("english")[j], "not")
-}
-
-sub_cont <- sub_cont %>% 
-            tm_map(change, "blue oval", "blueoval") %>%
-            tm_map(change, "loyal followers", "loyalfollower")
-
-
-sub_cont <- sub_cont %>% 
-            tm_map(removePunctuation) %>% 
-            tm_map(stripWhitespace) %>%
-            tm_map(stemDocument) %>%
-            tm_map(removeNumbers)
 
 # change words into original form
 mat <- matrix(c(c("releas", "purchas", "websit", "territori", "specif", "peopl", "futur", "decid", "brochur", "pictur"), 
