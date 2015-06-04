@@ -41,8 +41,9 @@ TMV <- function(){
   # STEP 1 Input data
   # check ncol == 1
   # df <- na.omit(df)
-  raw <- readline("| Please enter the data file name: ")
+  raw.name <- readline("| Please enter the data file name: ")
   cat("\n")
+  
   
   # STEP 2 Treatments
   
