@@ -1,5 +1,5 @@
 #--------------------------------
-
+# STEP 0 Install necessary packages
 req.pcg <- function(pcg){
   # packages to be installed
   tbinst <- pcg[(!(pcg %in% installed.packages()[, "Package"]))|
@@ -29,6 +29,13 @@ req.pcg(all.pcg)
 
 #--------------------------------
 e <- new.env()
+
+# e$raw      cleaned data frame after input with 1 column and no NA
+# e$rawc     e$raw turned to corpus
+# e$corpus0  after routine primary treatments
+# e$corpus1  after removing stopwords which user specified
+# e$corpus2  after Sparsity specified and used
+
 
 TMV <- function(){
   
@@ -65,17 +72,17 @@ TMV <- function(){
   # turn data frame into corpus: raw corpus
   e$rawc <- Corpus(VectorSource(e$raw))
   
-  e$corpus <- e$rawc %>% 
+  e$corpus0 <- e$rawc %>% 
     tm_map(content_transformer(tolower)) %>%
     tm_map(removeWords, stopwords("english")[c(-(81:98), -(165:167))])
   # retain "not" meaning words
   # change them all to "no"
   change <- content_transformer(function(x, from, to) gsub(from, to, x))
   for(j in c(81:98, 166:167)) {
-    e$corpus <- tm_map(e$corpus, change, stopwords("english")[j], "no")
+    e$corpus0 <- tm_map(e$corpus, change, stopwords("english")[j], "no")
   }
   
-  sub_cont <- sub_cont %>% 
+  e$corpus0 <- e$corpus0 %>% 
     tm_map(removePunctuation) %>% 
     tm_map(stripWhitespace) %>%
     tm_map(stemDocument) %>%
@@ -84,6 +91,30 @@ TMV <- function(){
   # STEP 3 Descriptive Analysis
   # 1. Text: total words number, number of comments, summary(freq)
   # 2. Frequency Plot (1. Top 20 words; 2. quarter quantiles positions)
+  e$dtm0 <- DocumentTermMatrix(e$corpus0)
+  e$tdm0 <- TermDocumentMatrix(e$corpus0)
+  # dim(dtm)
+  # inspect(dtm[1:5, 1:5])
+  freq0 <- colSums(as.matrix(e$dtm0))
+  # length(freq)
+  ord0 <- order(freq0, decreasing = TRUE)
+  # table(freq)
+  e$freq0 <- freq0[ord0]
+  
+  message("| You have input ", nrow(e$raw), " pieces of paragraph, ")
+  message("| including ", length(freq0), " unique words. \n")
+  message("| The distribution of words frequency is as follows. ")
+  print(summary(e$freq0))
+  
+  # Histogram of Frequency
+  e$wf0 <- data.frame(words=names(e$freq0), freq=e$freq0)
+  # head(e$wf0)
+  e$wf0[1:20, ] %>%
+    ggplot(aes(word, freq)) +
+    geom_bar(stat="identity") +
+    theme(axis.text.x=element_text(angle=45, hjust=1))
+  
+  # quarter quantiles positions? 
   
   # STEP 4  Deeper Analysis Preparation
   # warning: e.g. blue oral -> blueoral
@@ -92,10 +123,11 @@ TMV <- function(){
   message('| like to treat them as one word when analysing, please ')
   message('| replace them with "newworld" in Excel and restart the tool. \n')
   
-  # Q1: Additional stopwords?
+  # Q1: Additional stopwords? 
   repeat{
     repeat{
       message("| Do you have any Additional Stopwords? ")
+      # need to output words whose freq == 1 as reference? 
       message("| If none, just press <Enter> without typing any letters. ")
       stps <- readline('| Please specify (use comma "," to split words): ')
       cat("\n")
@@ -121,10 +153,21 @@ TMV <- function(){
         break
     }
   }
+  e$corpus1 <- tm_map(e$corpus0, removeWords, e$stops)
   
+  # change words into original form
+  repeat{
+    opt <- readline("| Would you like to resume the stems to completed words(Y/N)? ")
+    if(!toupper(opt) %in% c("Y", "N")){
+      message('| Only "Y" or "N" is acceptable! ')
+    } else if(toupper(opt) == "N") {
+      break
+    } else { # if(toupper(opt) == "Y")
+      message('| A *.csv file named "CompleteWords.csv" is exported to ', )
+    }
+  }
   
-  
-  # Q1: Sparsity? (big loop) 
+  # Q2: Sparsity? (big loop) 
   
   
   # STEP 5 Visualization
@@ -153,28 +196,6 @@ mat <- matrix(c(c("releas", "purchas", "websit", "territori", "specif", "peopl",
 for(k in 1:ncol(mat)){
   sub_cont <- tm_map(sub_cont, change, mat[1, k], mat[2, k])  
 }
-
-sub_cont <- tm_map(sub_cont, removeWords, 
-                   c("even", "still", "just", "will", "yet", "can", "much", "car", "ford", "also", "one", "vehicl"))
-
-dtm <- DocumentTermMatrix(sub_cont)
-tdm <- TermDocumentMatrix(sub_cont)
-dim(dtm)
-# inspect(dtm[1:5, 1:5])
-freq <- colSums(as.matrix(dtm))
-# length(freq)
-ord <- order(freq, decreasing = TRUE)
-# table(freq)
-freq <- freq[ord]
-
-wf <- data.frame(word=names(freq), freq=freq)
-head(wf)
-
-# Histogram of Frequency
-subset(wf, freq > 2) %>%
-  ggplot(aes(word, freq)) +
-  geom_bar(stat="identity") +
-  theme(axis.text.x=element_text(angle=45, hjust=1))
 
 comp <- function(words, mat){
   for(i in 1:length(words)){
