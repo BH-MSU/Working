@@ -29,7 +29,7 @@ req.pcg(all.pcg)
 
 #--------------------------------
 e <- new.env()
-
+e$wd_recover <- getwd()
 # e$raw      cleaned data frame after input with 1 column and no NA
 # e$rawc     e$raw turned to corpus
 # e$corpus0  after routine primary treatments
@@ -47,6 +47,12 @@ TMV <- function(){
       "|   2. with 1 single column;",  
       "|   3. without headline.", "", sep = "\n")
   
+  # set wd
+  if(!file.exists("Text_WD"))dir.create("Text_WD")
+  setwd(paste(e$wd_recover, "Text_WD", sep = "/"))
+  message('| The working directory is set as "Text_WD" under your original WD. ')
+  message('| If you have not put the data file under "Text_WD" file, do it now! ')
+
   # STEP 1 Input data
   # check ncol == 1
   # df <- na.omit(df)
@@ -184,6 +190,10 @@ TMV <- function(){
   
   # STEP 6 final output
   
+  
+  
+  
+  setwd(e$wd_recover)
 }
 
 
