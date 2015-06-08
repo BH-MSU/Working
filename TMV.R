@@ -18,9 +18,9 @@ req.pcg <- function(pcg){
   sapply(pcg, require, warn.conflicts = FALSE, character.only = TRUE, quietly = TRUE)  
 }
 
-all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", 
+all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph",
-             "Rweibo", "Rwordseg", "rJava", "RWeka", "ggdendro")
+             "Rweibo", "Rwordseg", "rJava", "RWeka", "ggdendro", "topicmodels")
 # rJava is needed for installing and requiring Rwordseg
 req.pcg(all.pcg)
 
@@ -91,17 +91,21 @@ TMV <- function(){
   e$corpus0 <- e$corpus0 %>% 
     tm_map(removePunctuation) %>% 
     tm_map(stripWhitespace) %>%
-    tm_map(stemDocument) %>%
     tm_map(removeNumbers)
+  
+  e$corpus0stem <- e$corpus0 %>% tm_map(stemDocument)
   
   # STEP 3 Descriptive Analysis
   # 1. Text: total words number, number of comments, summary(freq)
   # 2. Frequency Plot (1. Top 20 words; 2. quarter quantiles positions)
-  e$dtm0 <- DocumentTermMatrix(e$corpus0)
-  # e$tdm0 <- TermDocumentMatrix(e$corpus0)
+  e$tdm0 <- TermDocumentMatrix(e$corpus0)
+  # e$dtm0 <- DocumentTermMatrix(e$corpus0stem)
   # dim(dtm)
   # inspect(dtm[1:5, 1:5])
-  freq0 <- colSums(as.matrix(e$dtm0))
+  rownames(e$tdm0) <- stemCompletion(rownames(e$tdm0), e$corpus0)
+  e$tdmm0 <- as.matrix(e$tdm0)
+  
+  freq0 <- colSums(e$tdmm0)
   # length(freq)
   ord0 <- order(freq0, decreasing = TRUE)
   # table(freq)
@@ -115,7 +119,7 @@ TMV <- function(){
   # Histogram of Frequency
   message("| Please look to right for the Histogram of Words Frequency. \n")
   
-  e$wf0 <- data.frame(words=names(e$freq0), freq=e$freq0)
+  e$wf0 <- data.frame(word = names(e$freq0), freq = e$freq0)
   # head(e$wf0)
   # e$wf0[1:20, ]                                       %>%
   #   ggplot(aes(word, freq))                            +
@@ -126,7 +130,7 @@ TMV <- function(){
   e$wf0$word <- factor(e$wf0$word, 
                        levels = e$wf0[order(e$wf0[,2], decreasing = FALSE), 1], 
                        ordered=T)  
-  ggplot(e$wf0[1:20, ],aes(word, freq))               +
+  ggplot(e$wf0[1:20, ], aes(word, freq))              +
     geom_bar(stat = "identity")                       +
     coord_flip()                                      +
     ggtitle("Word Frequency Top 20")                  +
@@ -168,7 +172,7 @@ TMV <- function(){
     repeat{
       opt <- readline("| Could you confirm (Y/N)? ")
       if(!toupper(opt) %in% c("Y", "N")){
-        message('| Only "Y" or "N" is acceptable! ')
+        message('| Only "Y" or "N" is acceptable! \n')
       } else break
     }
     if(toupper(opt) == "Y") {
@@ -177,12 +181,17 @@ TMV <- function(){
     }
   }
   e$corpus1 <- tm_map(e$corpus0, removeWords, e$stops)
-  e$dtm1 <- DocumentTermMatrix(e$corpus1)
-  freq1 <- colSums(as.matrix(e$dtm1))
+  e$corpus1stem <- e$corpus1 %>% tm_map(stemDocument)
+  
+  e$tdm1 <- TermDocumentMatrix(e$corpus1stem)
+  rownames(e$tdm1) <- stemCompletion(rownames(e$tdm1), e$corpus1)
+  e$tdmm1 <- as.matrix(e$tdm1)
+  
+  freq1 <- rowSums(e$tdmm1)
   ord1 <- order(freq1, decreasing = TRUE)
   # table(freq)
   e$freq1 <- freq1[ord1]
-  e$wf1 <- data.frame(words = names(e$freq1), freq = e$freq1)
+  e$wf1 <- data.frame(word = names(e$freq1), freq = e$freq1)
 
   
   # Q2: Sparsity? (big loop) 
@@ -195,106 +204,148 @@ TMV <- function(){
       } else break
     }
     e$spst <- as.numeric(spst)
+    e$tdm2 <- removeSparseTerms(e$tdm1, e$spst)
+    e$tdmm2 <- as.matrix(e$tdm2)
+    
+    freq2 <- rowSums(e$tdmm2)
+    ord2 <- order(freq2, decreasing = TRUE)
+    # table(freq)
+    e$freq2 <- freq2[ord2]
+    e$wf2 <- data.frame(word = names(e$freq2), freq = e$freq2)
     
     # STEP 5 Visualization
     # remarks: small loops, ask preferred parameters for plots, 
     #          if satisfied, save useful objects for final output
-    # 1. Frequency Plot: ncol?
+    # 1. Frequency Plot: topn?
     repeat{
       repeat{
-        ncol <- readline("| How many words are you preferred for the frequency histogram? ")
-        if(!all(strsplit(ncol)[[1]] %in% as.character(0:9))){
-          message("| Only integer is acceptable! \n")
+        topn <- readline("| How many words are you preferred for the frequency histogram? ")
+        if(!all(strsplit(topn)[[1]] %in% as.character(0:9))){
+          message("| Only positive integer is acceptable! \n")
         } else break
       }
-      ncol <- as.numeric(ncol)
-      e$wf1$word <- factor(e$wf1$word, 
-                           levels = e$wf1[order(e$wf1[,2], decreasing = FALSE), 1], 
+      e$topn <- as.numeric(topn)
+      e$wf2$word <- factor(e$wf2$word, 
+                           levels = e$wf2[order(e$wf2[,2], decreasing = FALSE), 1], 
                            ordered=T)
-      ggplot(e$wf1[1:ncol, ],aes(word, freq))                +
+      ggplot(e$wf2[1:e$topn, ],aes(word, freq))                +
         geom_bar(stat = "identity")                          +
         coord_flip()                                         +
-        ggtitle(paste("Word Frequency Top", ncol, sep = " ") +
+        ggtitle(paste("Word Frequency Top", e$topn, sep = " ") +
         ylab("Frequency")                                    +
         xlab("Word")
       
       message("| Please look to right for the Histogram of Words Frequency. \n")
       repeat{
         opt <- readline("| Are you satisfied with the number(Y/N)?")
-        
+        if(!toupper(opt) %in% c("Y", "N")){
+          message("| Only Y or N is acceptable! \n")
+        } else break
+      }
+      if(toupper(opt) == "Y") {
+        e$min.freqh <- e$wf2$freq[e$topn]
+        message("| The histogram of Top ", e$topn, " word frequency is plotted, ")
+        message("| in which the minimum frequency equals to ", e$min.freqh, ". \n")
+        break
       }
     }
-
     
     # 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
-    # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
-    #    Correlation output csv
-    # 4.0 hclust
-    # 4.1 rect.hclust: k?
-    # 4.2 clust: automatic k?
-    # 5 Topic Modeling
-      
-    # change words into original form
     repeat{
-      opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
-      if(!toupper(opt) %in% c("Y", "N")){
-        message('| Only "Y" or "N" is acceptable! ')
-      } else if(toupper(opt) == "N") {
-        break
-      } else if(toupper(opt) == "Y") {
-        e$outwords <- data.frame(stem = names(e$freq1), completeword = rep(NA, length(e$freq1)), 
-                                 stringsAsFactors = FALSE)
-        write.csv(e$comwords, "CompleteWords.csv", row.names = FALSE)
-        
-        message('| A *.csv file named "CompleteWords.csv" is exported to file "TMV_WD". ')
-        message('| Please open it in Excel and type the corresponding complete words ')
-        message('| on the 2nd column. Keep the blank if no changes needed for the word. ')
-        message('| No phrases are acceptable! ')
-        readline("| Make sure you have saved the changes... \n")
-        
-        e$inwords <- read.csv("CompleteWords.csv", stringsAsFactors = FALSE)
-        message("| Your type is imported. \n")
-        e$comwords <- apply(e$inwords, c(1, 2), change, " ", "")
-        e$comwords[which(e$comwords[[2]] == ""), 2] <- NA
-        e$comwords <- na.omit(e$comwords)
-        
-        message("| The word pairs to be changed are printed below. ")
-        print(e$comwords)
-        
-        repeat{
-          opt <- readline("| Is this what you want (Y/N)? ")
-          if(!toupper(opt) %in% c("Y", "N")){
-            message('| Only "Y" or "N" is acceptable! ')
-          } else break
-        }
-        
-        if(toupper(opt) == "Y"){
-          for(k in 1:nrow(e$comwords))){
-            e$corpus2 <- tm_map(e$corpus1, change, e$comwords[k, 1], e$comwords[k, 2])
-          }
-          e$dtm2 <- DocumentTermMatrix(e$corpus2)
-          freq2 <- colSums(as.matrix(e$dtm2))
-          ord2 <- order(freq2, decreasing = TRUE)
-          # table(freq)
-          e$freq2 <- freq2[ord2]
-          e$wf2 <- data.frame(words = names(e$freq2), freq = e$freq2)
-          e$wf2$word <- factor(e$wf2$word, 
-                               levels = e$wf2[order(e$wf2[,2], decreasing = FALSE), 1], 
-                               ordered=T)  
-          ggplot(e$wf2[1:20, ],aes(word, freq))               +
-            geom_bar(stat = "identity")                       +
-            coord_flip()                                      +
-            ggtitle("Word Frequency Top 20")                  +
-            ylab("Frequency")                                 +
-            xlab("Word")
-        }
-        break
+      e$min.freqc <- 
+      set.seed(123)
+      wordcloud(e$wf2$word, e$wf2$freq, min.freq = e$min.freqc, rot.per = .3, 
+                random.order = FALSE, colors=brewer.pal(6, "Dark2"))
+      message("| ", e$min.freq, "is set as the minimum frequency for the wordcloud on the right. \n")
+      repeat{
+        opt <- readline("| Are you satisfied with the minimum frequency (Y/N)? ")
+        if(!toupper(opt) %in% c("Y", "N")) {
+          message('| Only "Y" or "N" is acceptable! \n')
+        } else break
       }
+      if(toupper(opt) == "Y") break
     }
     
-  
-  
-  
+    
+    
+    # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
+    #    Correlation output csv
+    
+    e$min.freqa <- 
+    e$corth <- 
+    
+    attrs <- list(node = list(shape = "ellipse", fixedsize = FALSE,
+                              style = "invis", fontcolor = "white",
+                              fillcolor = "red"),
+                  edge = list(dir = "both", color = "darkblue", weight = 1.2))
+    plot(tdm,
+         terms = findFreqTerms(e$tdm2, lowfreq = e$min.freqa),
+         corThreshold = e$corth,
+         attrs = attrs, 
+         weighting = TRUE)  
+    # Warning message:
+    #   In cor(m) : the standard deviation is zero
+    
+    # 4.0 hclust
+    # Cluster Dendrogram:
+    DistMat <- dist(scale(e$tdmm2))
+    # DistMat <- dist(scale(e$tdmm2[ord2, ][1:40, ]))
+    fit <- hclust(DistMat, method = "ward") 
+    # method = "ward.D", "ward.D2", "single", "complete", "average"...
+    # plot(fit)
+    ggdendrogram(fit)
+    
+    # 4.1 rect.hclust: k?
+    # cut tree into k clusters
+    e$clustk <- 
+    rect.hclust(fit, k = e$clustk)
+    # rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
+    #             border = 2, cluster = NULL)
+    
+    # kmeans
+    dtmm2 <- t(e$tdmm2)
+    set.seed(122)
+    kmeansResult <- kmeans(dtmm2, centers = e$clustk)
+    # round(kmeansResult$centers, digits = 3) # cluster centers
+    write.csv(kmeansResult$centers, "kmeans_centers.csv", row.names = FALSE)
+    
+    for (i in 1:k) {
+      cat(paste("cluster ", i, ": ", sep = ""))
+      s <- sort(kmeansResult$centers[i, ], decreasing = T)
+      cat(names(s)[1:5], "\n")
+      # print the tweets of every cluster
+      # print(tweets[which(kmeansResult$cluster==i)])
+    }
+    
+    # 4.2 clust: automatic k?
+    # library(fpc)
+    # partitioning around medoids with estimation of number of clusters
+    pamResult <- pamk(m3, metric="manhattan")
+    k <- pamResult$nc # number of clusters identified
+    pamResult <- pamResult$pamobject
+    # print cluster medoids
+    for (i in 1:k) {
+    cat("cluster", i, ": ",
+        colnames(pamResult$medoids)[which(pamResult$medoids[i,]==1)], "\n")
+    }
+    
+    # plot clustering result
+    layout(matrix(c(1, 2), 1, 2)) # set to two graphs per page
+    plot(pamResult, col.p = pamResult$clustering)
+    
+    # 5 Topic Modeling
+    dtm2 <- as.DocumentTermMatrix(e$tdm2)
+    # library(topicmodels)
+    lda <- LDA(dtm2, k = 8) # find 8 topics
+    term <- terms(lda, 4) # first 4 terms of every topic
+    term <- apply(term, MARGIN = 2, paste, collapse = ", ")
+    
+    topic <- topics(lda, 1)
+    topics <- data.frame(date=as.IDate(tweets.df$created), topic)
+    qplot(date, ..count.., data=topics, geom="density",
+          fill=term[topic], position="stack")
+    
+    
   }
   
   # STEP 6 final output
@@ -303,39 +354,6 @@ TMV <- function(){
   setwd(e$wd_recover)
 }
 
-
-
-
-
-
-set.seed(123)
-wordcloud(names(freq), freq, min.freq = 4, scale = c(5, .8), 
-          random.order = FALSE, colors=brewer.pal(6, "Dark2"))
-
-# Association plot
-Attrs <- list(node = list(shape = "ellipse", fixedsize = FALSE,
-                          style = "invis", fontcolor = "white",
-                          fillcolor = "red"),
-                          edge = list(dir = "both", color = "darkblue", weight = 1.2))
-plot(dtm,
-     terms = findFreqTerms(dtm, lowfreq = 4),
-     corThreshold = 0.2,
-     attrs = Attrs, 
-     weighting = TRUE)  
-
-# Cluster Dendrogram:
-# DistMat <- dist(scale(as.matrix(tdm)))
-DistMat <- dist(scale(as.matrix(tdm)[order(rowSums(as.matrix(tdm)), decreasing = TRUE), ][1:35, ]))
-fit <- hclust(DistMat) 
-# method = "ward.D", "ward.D2", "single", "complete", "average"...
-plot(fit)
-ggdendrogram(fit)
-# cut tree into k clusters
-rect.hclust(fit, k = 6)
-# rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
-#             border = 2, cluster = NULL)
-
-# kmeans
 
 # findAssocs(dtm, "not", corlimit = 0.3)
 
@@ -362,3 +380,62 @@ rect.hclust(fit, k = 6)
 # commonality.cloud(tdm6, random.order=FALSE,
 #                    colors = brewer.pal(8, "Dark2"),
 #                    title.size=1.5)
+
+
+# # change words into original form
+# repeat{
+#   opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
+#   if(!toupper(opt) %in% c("Y", "N")){
+#     message('| Only "Y" or "N" is acceptable! \n')
+#   } else if(toupper(opt) == "N") {
+#     break
+#   } else if(toupper(opt) == "Y") {
+#     e$outwords <- data.frame(stem = names(e$freq1), completeword = rep(NA, length(e$freq1)), 
+#                              stringsAsFactors = FALSE)
+#     write.csv(e$comwords, "CompleteWords.csv", row.names = FALSE)
+#     
+#     message('| A *.csv file named "CompleteWords.csv" is exported to file "TMV_WD". ')
+#     message('| Please open it in Excel and type the corresponding complete words ')
+#     message('| on the 2nd column. Keep the blank if no changes needed for the word. ')
+#     message('| No phrases are acceptable! ')
+#     readline("| Make sure you have saved the changes... \n")
+#     
+#     e$inwords <- read.csv("CompleteWords.csv", stringsAsFactors = FALSE)
+#     message("| Your type is imported. \n")
+#     e$comwords <- apply(e$inwords, c(1, 2), change, " ", "")
+#     e$comwords[which(e$comwords[[2]] == ""), 2] <- NA
+#     e$comwords <- na.omit(e$comwords)
+#     
+#     message("| The word pairs to be changed are printed below. ")
+#     print(e$comwords)
+#     
+#     repeat{
+#       opt <- readline("| Is this what you want (Y/N)? ")
+#       if(!toupper(opt) %in% c("Y", "N")){
+#         message('| Only "Y" or "N" is acceptable! \n')
+#       } else break
+#     }
+#     
+#     if(toupper(opt) == "Y"){
+#       for(k in 1:nrow(e$comwords))){
+#           e$corpus2 <- tm_map(e$corpus1, change, e$comwords[k, 1], e$comwords[k, 2])
+#         }
+#       e$dtm2 <- DocumentTermMatrix(e$corpus2)
+#       freq2 <- colSums(as.matrix(e$dtm2))
+#       ord2 <- order(freq2, decreasing = TRUE)
+#       # table(freq)
+#       e$freq2 <- freq2[ord2]
+#       e$wf2 <- data.frame(words = names(e$freq2), freq = e$freq2)
+#       e$wf2$word <- factor(e$wf2$word, 
+#                            levels = e$wf2[order(e$wf2[,2], decreasing = FALSE), 1], 
+#                            ordered=T)  
+#       ggplot(e$wf2[1:20, ],aes(word, freq))               +
+#         geom_bar(stat = "identity")                       +
+#         coord_flip()                                      +
+#         ggtitle("Word Frequency Top 20")                  +
+#         ylab("Frequency")                                 +
+#         xlab("Word")
+#     }
+#     break
+#   }
+# }
