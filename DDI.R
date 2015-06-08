@@ -13,7 +13,7 @@ e$all.pcg <- c("rJava", "xlsxjars", "xts", "xlsx", "zoo", "plyr", "tidyr", "dply
 req.pkg <- function(pkg){
   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
   if (length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
-  sapply(pkg, require, character.only = TRUE)
+  sapply(pkg, require, character.only = TRUE, quietly = TRUE)
 }
 req.pkg(e$all.pcg)
 
@@ -1027,6 +1027,10 @@ lag.trans <- function(raw.data, resp, time, stop.point, lag.len.v = 0:70, top.no
   colnames(corr.df) <- c("corr.vector", "var.name", "lag.len")
   corr.df <- tbl_df(corr.df)
   corr.df.new <- tidyr::spread(corr.df, var.name, corr.vector)
+  # e$test <- corr.df.new
+  corr.df.new.7 <- corr.df.new[which(corr.df.new$lag.len %% 7 == 0), ]
+  write.csv(corr.df.new.7, "Corr_Lag_7_Multiples.csv", row.names = FALSE)
+  message('| "Corr_Lag_7_Multiples.csv" is exported to "DDI_OUTPUT".\n')
   
   order.lag <- function(vector, top.no = top.no){
     return(order(abs(vector), na.last = FALSE, decreasing = TRUE)[1:top.no])
@@ -1036,7 +1040,7 @@ lag.trans <- function(raw.data, resp, time, stop.point, lag.len.v = 0:70, top.no
   col.name <- colnames(lag.pstn)
   lag.pstn <- data.frame(matrix(lag.pstn, nrow = 10, 
                                 dimnames = list(rownames = NULL, colnames = col.name)))
-  h.corr <- data.frame(matrix(, nrow = 10, ncol = ncol(lag.pstn)))
+  h.corr <- data.frame(matrix(NULL, nrow = 10, ncol = ncol(lag.pstn)))
   for(i in 1:ncol(lag.pstn)){
     h.corr[, i] <- corr.df.new[lag.pstn[[i]], i+1]
   }
