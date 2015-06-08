@@ -13,7 +13,8 @@ e$all.pcg <- c("rJava", "xlsxjars", "xts", "xlsx", "zoo", "plyr", "tidyr", "dply
 req.pkg <- function(pkg){
   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
   if (length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
-  sapply(pkg, require, character.only = TRUE, quietly = TRUE)
+  sapply(pkg, require, 
+         character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)
 }
 req.pkg(e$all.pcg)
 
@@ -28,6 +29,8 @@ DDI <- function(){
   # STEP 0.5 set working directory
   if(!file.exists("DDI_OUTPUT"))dir.create("DDI_OUTPUT")
   setwd(paste(e$wd_recover, "DDI_OUTPUT", sep = "/"))
+  message('| The working directory is set as "DDI_OUTPUT" under your original WD. ')
+  message('| If you have not put the data file under "DDI_OUTPUT" file, do it now! ')
 
   ######################
   ## STEP 1 LOAD DATA ##
@@ -1040,7 +1043,7 @@ lag.trans <- function(raw.data, resp, time, stop.point, lag.len.v = 0:70, top.no
   col.name <- colnames(lag.pstn)
   lag.pstn <- data.frame(matrix(lag.pstn, nrow = 10, 
                                 dimnames = list(rownames = NULL, colnames = col.name)))
-  h.corr <- data.frame(matrix(NULL, nrow = 10, ncol = ncol(lag.pstn)))
+  h.corr <- data.frame(matrix(, nrow = 10, ncol = ncol(lag.pstn)))
   for(i in 1:ncol(lag.pstn)){
     h.corr[, i] <- corr.df.new[lag.pstn[[i]], i+1]
   }
