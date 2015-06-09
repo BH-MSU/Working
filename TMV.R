@@ -231,7 +231,7 @@ TMV <- function(){
       ggplot(e$wf2[1:e$topn, ],aes(word, freq))                +
         geom_bar(stat = "identity")                          +
         coord_flip()                                         +
-        ggtitle(paste("Word Frequency Top", e$topn, sep = " ") +
+        ggtitle(paste("Word Frequency Top", e$topn, sep = " ")) + 
         ylab("Frequency")                                    +
         xlab("Word")
       
