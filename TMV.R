@@ -349,12 +349,14 @@ TMV <- function(){
 		}
 		
     
-    # kmeans
+    # kmeans: cluster by documents
     dtmm2 <- t(e$tdmm2)
     set.seed(122)
     kmeansResult <- kmeans(dtmm2, centers = e$clustk)
     # round(kmeansResult$centers, digits = 3) # cluster centers
-    write.csv(kmeansResult$centers, "kmeans_centers.csv", row.names = FALSE)
+    write.csv(data.frame(size = kmeansResult$size, kmeansResult$centers), 
+              "kmeans_centers.csv")
+    write.csv(kmeansResult$cluster, "kmeans_cluster.csv")
     
     for (i in 1:k) {
       cat(paste("cluster ", i, ": ", sep = ""))
@@ -383,6 +385,7 @@ TMV <- function(){
     # 5 Topic Modeling
     dtm2 <- as.DocumentTermMatrix(e$tdm2)
     # library(topicmodels)
+    e$topicn <- 
     lda <- LDA(dtm2, k = 8) # find 8 topics
     term <- terms(lda, 4) # first 4 terms of every topic
     term <- apply(term, MARGIN = 2, paste, collapse = ", ")
