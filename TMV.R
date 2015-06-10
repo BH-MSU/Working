@@ -302,7 +302,6 @@ TMV <- function(){
     #    Correlation output .csv
 		max.freq <- max(e$freq2[,2])
 		max.cor <- check.cor(t(e$tdmm2))
-		
 		repeat{
 			# Question 5.3: Minimum frequency for a word to get into the association plot
 			# Input: 1. min frequency for a variable to get into the association plot
@@ -329,18 +328,26 @@ TMV <- function(){
     # 4.0 hclust
     # Cluster Dendrogram:
     DistMat <- dist(scale(e$tdmm2))
-    # DistMat <- dist(scale(e$tdmm2[ord2, ][1:40, ]))
-    fit <- hclust(DistMat, method = "ward") 
+    fit <- hclust(DistMat, method = "ward.D") 
     # method = "ward.D", "ward.D2", "single", "complete", "average"...
     # plot(fit)
     ggdendrogram(fit)
     
     # 4.1 rect.hclust: k?
     # cut tree into k clusters
-    e$clustk <- 
-    rect.hclust(fit, k = e$clustk)
-    # rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
-    #             border = 2, cluster = NULL)
+		repeat{
+			# Question 5.4: No. of Clusters
+			# Input: No. of clusters
+			# Output: e$no.clust, numeric vector of length 1
+			e$clustk <- TMV.Q(index = 8)
+			message("| The main ", e$clustk, " clusters are plotted in red rectangles.")
+			rect.hclust(fit, k = e$clustk)
+			# rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
+			#             border = 2, cluster = NULL)
+		
+			
+		}
+		
     
     # kmeans
     dtmm2 <- t(e$tdmm2)
