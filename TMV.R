@@ -309,8 +309,8 @@ TMV <- function(){
 			# Output: e$low_freq, numeric vector of length 1; e$cor_thres, numeric vector of length 1
 			# Parameters: 1. max.freq: maximum frequency of a word in the dtm
 			#							2. max.cor: maximum correlation between words in the dtm
-			e$min.freqa <- TMV.R(index = 7)[1]
-			e$corth <- TMV.R(index = 7)[2]
+			e$min.freqa <- TMV.Q(index = 7)[1]
+			e$corth <- TMV.Q(index = 7)[2]
 			
 			attrs <- list(node = list(shape = "ellipse", fixedsize = FALSE,
 																style = "invis", fontcolor = "white",
