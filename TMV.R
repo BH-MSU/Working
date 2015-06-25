@@ -28,19 +28,8 @@ check.cor <- function(df){
   print(mat[1:n.cor,])
   write.csv(mat, "correlation_pairs.csv", row.names = F)
   message('\n| The correlation pairs and rates are exported to "correlation_pairs.csv".\n')
-	
-	return(max(mat[,3]))
+	#return(max(mat[,3]))
 }
-
-
-
-
-
-
-
-
-
-
 
 #--------------------------------
 # STEP 0 Install necessary packages
@@ -104,45 +93,99 @@ TMV <- function(){
 	#--------------------------------------------------------------------------------
   # STEP 2 Treatments
   # turn data frame into corpus: raw corpus
-  e$rawc <- Corpus(VectorSource(e$raw))
+  e$rawc <- Corpus(VectorSource(e$raw[[1]]))
   
   e$corpus0 <- e$rawc                                    %>% 
     tm_map(content_transformer(tolower))                 %>%
 		tm_map(PlainTextDocument)                            %>%
+    tm_map(stripWhitespace)                              %>%
+    tm_map(removeNumbers)                                %>%
     tm_map(removeWords, stopwords("english")[c(-(81:98), -(165:167))])
+  
   # retain "not" meaning words
   # change them all to "no"
   change <- content_transformer(function(x, from, to) gsub(from, to, x))
-  for(j in c(81:98, 166:167)) {
-    e$corpus0 <- tm_map(e$corpus0, change, stopwords("english")[j], "no")
+  for(j in c(81:98, 165:167)) {
+    e$corpus0 <- tm_map(e$corpus0, change, from = stopwords("english")[j], to = "not")
   }
   
   e$corpus0 <- e$corpus0              %>% 
-    tm_map(removePunctuation)         %>% 
-    tm_map(stripWhitespace)           %>%
-    tm_map(removeNumbers)
+    tm_map(removePunctuation)         
   
   e$corpus0stem <- e$corpus0          %>% 
 		tm_map(stemDocument)
   
+	message('| The file is imported, and is transformed in a primary way. \n')
+	
+	# change words into original form
+	e$tdm0stem <- TermDocumentMatrix(e$corpus0stem)
+	e$tdmm0stem <- as.matrix(e$tdm0stem)
+	colnames(e$tdmm0stem) <- as.character(1:ncol(e$tdmm0stem))
+	freq0stem <- rowSums(e$tdmm0stem)
+	e$freq0stem <- freq0stem[order(freq0stem, decreasing = TRUE)]
+	
+	repeat{
+	  message('| Some words seem strange after stemmed by R. ')
+	  opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
+	  cat("\n")
+	  if(!toupper(opt) %in% c("Y", "N")){
+	    message('| Only "Y" or "N" is acceptable! \n')
+	  } else if(toupper(opt) == "N") {
+	    break
+  	} else if(toupper(opt) == "Y") {
+  	  write.csv(data.frame(Stems = names(e$freq0stem), 
+  	                       Completions = stemCompletion(names(e$freq0stem), e$corpus0, "shortest"), 
+  	                       Frequency = e$freq0stem, 
+  	                       stringsAsFactors = FALSE), 
+  	            # default method: prevalent, takes the most frequent match as completion
+  	            # risking of changing some words which don't need heuristic completion of stemming
+  	            "stemCompletion.csv", row.names = FALSE)
+  	  
+  	  message('| A *.csv file named "stemCompletion.csv" is exported. ')
+  	  message('| Please open it in Excel, check and type the corresponding complete words ')
+  	  message('| on the 2nd column. Keep the 1st column words as they are. ')
+  	  message("| If you input spaces, they'll be removed in later process. \n")
+  	  readline("| Make sure you have saved the changes... \n")
+  	  
+  	  e$inwords <- read.csv("stemCompletion.csv", stringsAsFactors = FALSE)[, 1:2]
+  	  message("| Your type is imported. \n")
+  	  comwords <- apply(e$inwords, c(1, 2), function(x, from, to) gsub(from, to, x), " ", "")
+  	  comwords <- as.data.frame(comwords, rownames(comwords), stringsAsFactors = FALSE)
+  	  comwords[which(comwords[, 2] == ""), 2] <- NA
+  	  comwords <- na.omit(comwords)
+  	  e$comwords <- comwords[which(comwords[, 1] != comwords[, 2]), ]
+  	  
+  	  message("| ", nrow(e$comwords), " words are chosen to be changed, ")
+  	  message("| in which frequency in Top 30 are printed below. ")
+  	  print(e$comwords[1:30, ])
+  	  
+  	  # Satisfactory question
+  	  opt <- TMV.Q(index = 9)
+  	  if(opt == "Y") {
+  	    e$corpus0stemC <- e$corpus0stem
+  	    for(i in 1:nrow(e$comwords)) {
+  	      e$corpus0stemC <- tm_map(e$corpus0stemC, change, 
+  	                               from = e$comwords[i, 1], to = e$comwords[i, 2])
+  	    }
+  	    break
+  	  }
+  	}
+	}
 	
 	#--------------------------------------------------------------------------------
   # STEP 3 Descriptive Analysis
   # 1. Text: total number of words and comments, summary(freq)
   # 2. Frequency Plot (1. Top 20 words; 2. quarter quantiles positions)
-  e$tdm0 <- TermDocumentMatrix(e$corpus0stem)
+  e$tdm0 <- TermDocumentMatrix(e$corpus0stemC)
   # e$dtm0 <- DocumentTermMatrix(e$corpus0stem)
   # dim(dtm)
   # inspect(dtm[1:5, 1:5])
-  rownames(e$tdm0) <- stemCompletion(rownames(e$tdm0), e$corpus0, type = "shortest") 
-	# default method: prevalent, takes the most frequent match as completion
-	# risking of changing some words which don't need heuristic completion of stemming
   e$tdmm0 <- as.matrix(e$tdm0)
-  
+  colnames(e$tdmm0) <- as.character(1:ncol(e$tdmm0))
   freq0 <- rowSums(e$tdmm0)
   e$freq0 <- freq0[order(freq0, decreasing = TRUE)]
   
-  message("| Your input contains ", nrow(e$raw), " pieces of text,")
+  message("| Your input contains ", nrow(e$raw), " pieces of text(document),")
   message("| including ", length(freq0), " unique words. \n")
   message("| The statistical summary of words frequency is as follows: ")
   print(summary(e$freq0))
@@ -175,8 +218,8 @@ TMV <- function(){
 		geom_hline(aes(yintercept = mean(e$freq0)), colour = "red")										+
 		# geom_hline(aes(yintercept = summary(e$freq0)[[2]]), colour = "grey")					+
 		# geom_hline(aes(yintercept = summary(e$freq0)[[5]]), colour = "grey")					+
-		# annotate("text", 20.8, mean(e$freq0)+1, size = 3,
-		# 				 label = paste("Mean =", mean(e$freq0)))														+
+		annotate("text", 20.8, mean(e$freq0)+1, size = 3,
+						 label = paste("Mean =", round(mean(e$freq0), 2)))														+
 		# annotate("text", 20.8, summary(e$freq0)[[2]]+1, size = 3,
 		# 				 label = paste("1st Quartile:", summary(e$freq0)[[2]]))							+
 		# annotate("text", 20.8, summary(e$freq0)[[5]]+1, size = 3,
@@ -185,8 +228,8 @@ TMV <- function(){
 					plot.background = element_rect(fill = "transparent",colour = NA),
 					panel.grid.minor = element_blank(), 
 					panel.grid.major = element_blank(),
-					plot.title = element_text(size = 20, family = "Impact"))								#+
-#		coord_flip()                                  						    				
+					plot.title = element_text(size = 20, family = "Impact"))								+
+		coord_flip()                                  						    				
   png("p1_top20_word_freq.png", width = 1000, height = 1200, units = "px", bg = "transparent")
   p1
   e$p1 <- p1
@@ -434,60 +477,3 @@ TMV <- function(){
 #                    title.size=1.5)
 
 
-# # change words into original form
-# repeat{
-#   opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
-#   if(!toupper(opt) %in% c("Y", "N")){
-#     message('| Only "Y" or "N" is acceptable! \n')
-#   } else if(toupper(opt) == "N") {
-#     break
-#   } else if(toupper(opt) == "Y") {
-#     e$outwords <- data.frame(stem = names(e$freq1), completeword = rep(NA, length(e$freq1)), 
-#                              stringsAsFactors = FALSE)
-#     write.csv(e$comwords, "CompleteWords.csv", row.names = FALSE)
-#     
-#     message('| A *.csv file named "CompleteWords.csv" is exported to file "TMV_WD". ')
-#     message('| Please open it in Excel and type the corresponding complete words ')
-#     message('| on the 2nd column. Keep the blank if no changes needed for the word. ')
-#     message('| No phrases are acceptable! ')
-#     readline("| Make sure you have saved the changes... \n")
-#     
-#     e$inwords <- read.csv("CompleteWords.csv", stringsAsFactors = FALSE)
-#     message("| Your type is imported. \n")
-#     e$comwords <- apply(e$inwords, c(1, 2), change, " ", "")
-#     e$comwords[which(e$comwords[[2]] == ""), 2] <- NA
-#     e$comwords <- na.omit(e$comwords)
-#     
-#     message("| The word pairs to be changed are printed below. ")
-#     print(e$comwords)
-#     
-#     repeat{
-#       opt <- readline("| Is this what you want (Y/N)? ")
-#       if(!toupper(opt) %in% c("Y", "N")){
-#         message('| Only "Y" or "N" is acceptable! \n')
-#       } else break
-#     }
-#     
-#     if(toupper(opt) == "Y"){
-#       for(k in 1:nrow(e$comwords))){
-#           e$corpus2 <- tm_map(e$corpus1, change, e$comwords[k, 1], e$comwords[k, 2])
-#         }
-#       e$dtm2 <- DocumentTermMatrix(e$corpus2)
-#       freq2 <- colSums(as.matrix(e$dtm2))
-#       ord2 <- order(freq2, decreasing = TRUE)
-#       # table(freq)
-#       e$freq2 <- freq2[ord2]
-#       e$wf2 <- data.frame(words = names(e$freq2), freq = e$freq2)
-#       e$wf2$word <- factor(e$wf2$word, 
-#                            levels = e$wf2[order(e$wf2[,2], decreasing = FALSE), 1], 
-#                            ordered=T)  
-#       ggplot(e$wf2[1:20, ],aes(word, freq))               +
-#         geom_bar(stat = "identity")                       +
-#         coord_flip()                                      +
-#         ggtitle("Word Frequency Top 20")                  +
-#         ylab("Frequency")                                 +
-#         xlab("Word")
-#     }
-#     break
-#   }
-# }

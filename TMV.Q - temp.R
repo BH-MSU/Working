@@ -193,10 +193,13 @@ TMV.Q <- function(index, max.freq, max.cor){
 	# Output:
 	Q999 <- function(){
 		repeat{
-			opt <- readline("| Are you satisfied with the number assigned (Y/N)?")
+			opt <- readline("| Are you satisfied with the output (Y/N)?")
 			if(!toupper(opt) %in% c("Y", "N")){
 				message("| Only Y or N is acceptable! \n")
-			} else break
+			} else {
+			  return(toupper(opt))
+			  break
+			}
 		}
 	}
 	
