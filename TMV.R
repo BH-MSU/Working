@@ -29,7 +29,7 @@ check.cor <- function(df){
   write.csv(mat, "correlation_pairs.csv", row.names = F)
   message('\n| The correlation pairs and rates are exported to "correlation_pairs.csv".\n')
 	
-	return(max(mat[,3])))
+	return(max(mat[,3]))
 }
 
 
@@ -92,7 +92,7 @@ TMV <- function(){
   if(!file.exists("Text_WD"))dir.create("Text_WD")
   setwd(paste(e$wd_recover, "Text_WD", sep = "/"))
   message('| The working directory is set as "Text_WD" under the default WD. ')
-  message('| If you have not put the data file under "Text_WD" folder, do it now! ')
+  message('| If you have not put the data file under "Text_WD" folder, do it now! \n')
 
   # STEP 1 Input data
   # check ncol == 1
@@ -114,7 +114,7 @@ TMV <- function(){
   # change them all to "no"
   change <- content_transformer(function(x, from, to) gsub(from, to, x))
   for(j in c(81:98, 166:167)) {
-    e$corpus0 <- tm_map(e$corpus, change, stopwords("english")[j], "no")
+    e$corpus0 <- tm_map(e$corpus0, change, stopwords("english")[j], "no")
   }
   
   e$corpus0 <- e$corpus0              %>% 
@@ -134,22 +134,21 @@ TMV <- function(){
   # e$dtm0 <- DocumentTermMatrix(e$corpus0stem)
   # dim(dtm)
   # inspect(dtm[1:5, 1:5])
-  rownames(e$tdm0) <- stemCompletion(rownames(e$tdm0), e$corpus0) 
+  rownames(e$tdm0) <- stemCompletion(rownames(e$tdm0), e$corpus0, type = "shortest") 
 	# default method: prevalent, takes the most frequent match as completion
 	# risking of changing some words which don't need heuristic completion of stemming
   e$tdmm0 <- as.matrix(e$tdm0)
   
-  freq0 <- colSums(e$tdmm0)
-  e$freq0 <- freq0[order(freq0, decreasing = TRUE),]
+  freq0 <- rowSums(e$tdmm0)
+  e$freq0 <- freq0[order(freq0, decreasing = TRUE)]
   
   message("| Your input contains ", nrow(e$raw), " pieces of text,")
   message("| including ", length(freq0), " unique words. \n")
-  message("| The statistical summary of words frequency is as follows.\n")
+  message("| The statistical summary of words frequency is as follows: ")
   print(summary(e$freq0))
+  cat("\n")
   
   # Words Frequency Plot
-  message("| Please check the Words Frequency Plot at the plot zone.\n")
-  
   e$wf0 <- data.frame(word = names(e$freq0), freq = e$freq0)
   # head(e$wf0)
   # e$wf0[1:20, ]                                       %>%
@@ -161,21 +160,21 @@ TMV <- function(){
   e$wf0$word <- factor(e$wf0$word, 
                        ordered = TRUE, 
                        levels = e$wf0[order(e$wf0[,2]), 1])
-	e$wf0 <- e$wf0[order(e$wf0$freq, decreasing = TRUE),]
+	# e$wf0 <- e$wf0[order(e$wf0$freq, decreasing = TRUE),]
 	
 	windowsFonts(Impact=windowsFont("Impact")) # !!! windowsFonts/windowsFont {grDevices} 
 	# These functions handle the translation of a device-independent R graphics font family name to a windows font description.
 	# windowsFonts(Times=windowsFont("TT Times New Roman"))
 	
 	# plot word frequency with horizontal lines at mean, 1st quartile and 3rd quartile
-  p1 <- ggplot(e$wf0[1:20, ], aes(word, freq))          						   						+
+  p1 <- ggplot(e$wf0[1:40, ], aes(word, freq))          						   						+
     geom_bar(stat = "identity", fill = "orange")                  	 						  +
-    ggtitle("Words Frequency - Top 20")           						    								+
+    ggtitle("Word Frequency - Top 20")           						    								+
     ylab("Frequency")                             						    								+
     xlab("Word")																																	+
 		geom_hline(aes(yintercept = mean(e$freq0)), colour = "red")										+
-		geom_hline(aes(yintercept = summary(e$freq0)[[2]]), colour = "grey")					+
-		geom_hline(aes(yintercept = summary(e$freq0)[[5]]), colour = "grey")					+
+		# geom_hline(aes(yintercept = summary(e$freq0)[[2]]), colour = "grey")					+
+		# geom_hline(aes(yintercept = summary(e$freq0)[[5]]), colour = "grey")					+
 		# annotate("text", 20.8, mean(e$freq0)+1, size = 3,
 		# 				 label = paste("Mean =", mean(e$freq0)))														+
 		# annotate("text", 20.8, summary(e$freq0)[[2]]+1, size = 3,
@@ -186,12 +185,15 @@ TMV <- function(){
 					plot.background = element_rect(fill = "transparent",colour = NA),
 					panel.grid.minor = element_blank(), 
 					panel.grid.major = element_blank(),
-					plot.title = element_text(size = 20, family = "Impact"))								+
-		coord_flip()                                  						    				
+					plot.title = element_text(size = 20, family = "Impact"))								#+
+#		coord_flip()                                  						    				
   png("p1_top20_word_freq.png", width = 1000, height = 1200, units = "px", bg = "transparent")
+  p1
   e$p1 <- p1
-	grid.arrange(e$p1, ncol = 2)
-	dev.off()
+	# grid.arrange(e$p1, ncol = 2)
+	
+	message("| Please check the Words Frequency Plot at the plot zone.\n")
+	# dev.off()
   
 	#--------------------------------------------------------------------------------
   # STEP 4  Deeper Analysis Preparation
@@ -205,18 +207,15 @@ TMV <- function(){
 	# input: N - do not add stopwords, c("word1", "word2", ...) - a string of stopwords
 	# output: e$stops, character vector, a vector of additional stopwords 
 	e$stops <- TMV.Q(index = 2)
-	
-  e$corpus1 <- tm_map(e$corpus0, removeWords, e$stops)
-  e$corpus1stem <- e$corpus1 %>% tm_map(stemDocument)
-  
-  e$tdm1 <- TermDocumentMatrix(e$corpus1stem)
-  rownames(e$tdm1) <- stemCompletion(rownames(e$tdm1), e$corpus1)
-  
-	e$tdmm1 <- as.matrix(e$tdm1)
-  # table(freq)
-  e$freq1 <- freq1[order(freq1, decreasing = TRUE),]
-  e$wf1 <- data.frame(word = names(e$freq1), freq = e$freq1)
 
+  e$tdm1 <- e$tdm0[ - which(rownames(e$tdm0) %in% e$stops), ]
+	e$tdmm1 <- as.matrix(e$tdm1)
+	freq1 <- rowSums(e$tdmm1)
+  # table(freq)
+  e$freq1 <- freq1[order(freq1, decreasing = TRUE)]
+  message("| The statistical summary of words frequency is as follows: ")
+  print(summary(e$freq1))
+  cat("\n")
   
   # Q2: Sparsity? (big loop) 
   repeat{
@@ -230,9 +229,11 @@ TMV <- function(){
     
     freq2 <- rowSums(e$tdmm2)
     # table(freq)
-    e$freq2 <- freq2[order(freq2, decreasing = TRUE),]
+    e$freq2 <- freq2[order(freq2, decreasing = TRUE)]
     e$wf2 <- data.frame(word = names(e$freq2), freq = e$freq2)
-    
+    e$wf2$word <- factor(e$wf2$word, 
+                         levels = e$wf2[order(e$wf2[,2]), 1], 
+                         ordered=TRUE)
 		
 		#--------------------------------------------------------------------------------
     # STEP 5 Visualization
@@ -241,26 +242,22 @@ TMV <- function(){
     
 		# 1. Frequency Plot: ncol_freq?
     repeat{
-			message("| Please check the Words Frequency Plot  at the plot zone.\n")
-		
       # Question 5: a series of questions for visualization parameters in different plot
 			# Question 5.1: No. of columns (no. of top words) in word frequency plot
 			# Input: No. of columns
 			# Output: e$ncol_freq, numeric vector of length 1
+      message("| The statistical summary of words frequency is as follows: ")
+      print(summary(e$freq2))
+      cat("\n")
 			e$ncol_freq <- TMV.Q(index = 4)
 			
-      e$wf2$word <- factor(e$wf2$word, 
-                           levels = e$wf2[order(e$wf2[,2]), 1], 
-                           ordered=TRUE)
-      p2 <- ggplot(e$wf0[1:e$ncol_freq, ], aes(word, freq))          						   		+
+      p2 <- ggplot(e$wf2[1:e$ncol_freq, ], aes(word, freq))          						   		+
 				geom_bar(stat = "identity", fill = "orange")                  	 						  +
-				ggtitle(paste("Word Frequency Top", e$ncol_freq))           						    	+
+				ggtitle(paste("Word Frequency - Top", e$ncol_freq))           						    	+
 				ylab("Frequency")                             						    								+
 				xlab("Word")																																	+
-				geom_hline(aes(yintercept = mean(e$freq2)), colour = "red")										+
-				geom_hline(aes(yintercept = summary(e$freq2)[[2]]), colour = "grey")					+
-				geom_hline(aes(yintercept = summary(e$freq2)[[5]]), colour = "grey")					+
-				theme(panel.background = element_rect(fill = "transparent",colour = NA),
+        geom_hline(aes(yintercept = mean(e$freq2)), colour = "red")										+
+        theme(panel.background = element_rect(fill = "transparent",colour = NA),
 							plot.background = element_rect(fill = "transparent",colour = NA),
 							panel.grid.minor = element_blank(), 
 							panel.grid.major = element_blank(),
@@ -270,7 +267,9 @@ TMV <- function(){
 					width = 1000, height = 1200, units = "px", bg = "transparent")
 			e$p2 <- p2
 			grid.arrange(e$p1, e$p2, ncol = 2)
-			dev.off()
+			
+			message("| Please check the Words Frequency Plot at the plot zone.\n")
+			# dev.off()
 			
 			# index = 9: always satisfactory question
       opt <- TMV.Q(index = 9)
@@ -357,14 +356,16 @@ TMV <- function(){
     write.csv(data.frame(size = kmeansResult$size, kmeansResult$centers), 
               "kmeans_centers.csv")
     write.csv(kmeansResult$cluster, "kmeans_cluster.csv")
+    message('| "kmeans_centers.csv" and "kmeans_cluster.csv" are exported. \n')
     
+    message("| The documents clusters and the key words are as following: ")
     for (i in 1:k) {
-      cat(paste("cluster ", i, ": ", sep = ""))
       s <- sort(kmeansResult$centers[i, ], decreasing = T)
-      cat(names(s)[1:5], "\n")
+      cat(paste("| Cluster ", i, ": ", sep = ""), paste(names(s)[1:5], sep = ", "))
       # print the tweets of every cluster
       # print(tweets[which(kmeansResult$cluster==i)])
     }
+    cat("\n")
     
     # 4.2 clust: automatic k?
     # library(fpc)
@@ -386,7 +387,8 @@ TMV <- function(){
     dtm2 <- as.DocumentTermMatrix(e$tdm2)
     # library(topicmodels)
     e$topicn <- 
-    lda <- LDA(dtm2, k = 8) # find 8 topics
+    e$termn <- 
+    lda <- LDA(dtm2, k = e$topicn) # find 8 topics
     term <- terms(lda, 4) # first 4 terms of every topic
     term <- apply(term, MARGIN = 2, paste, collapse = ", ")
     

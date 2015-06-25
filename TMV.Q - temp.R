@@ -22,13 +22,17 @@ TMV.Q <- function(index, max.freq, max.cor){
 			endstr <- substr(raw.name, nchar(raw.name)-3, nchar(raw.name))
 			if(!endstr == ".csv"){
 				message('| Only "*.csv" file is acceptable!\n')
-			} elseif(!ncol(raw)==1) {
-				message("| Please confirm that your data has 1 single column!\n")
+			} else if(!file.exists(raw.name)){
+			  message('| There is no file called "', raw.name, '" in "Text_WD". \n')
 			} else {
 				raw <- na.omit(read.csv(raw.name, header = FALSE, stringsAsFactors = FALSE))
-				# !only applicable for single column input. need to find alternative solutions for further development
-				return(raw)
-				break
+				if(!ncol(raw)==1) {
+				  message("| Please confirm that your data has 1 single column!\n")
+				  # !only applicable for single column input. need to find alternative solutions for further development
+				} else {
+				  return(raw)
+				  break
+				}
 			}
 		}
 	}
@@ -38,13 +42,15 @@ TMV.Q <- function(index, max.freq, max.cor){
 	# input: N - do not add stopwords, c("word1", "word2", ...) - a string of stopwords
 	# output: e$stops, character vector, a vector of additional stopwords 
 	Q4.1 <- function(){
-		message("| Do you have any Additional Stopwords? ")
-		message("| If none, press <Enter> without typing any letters. ")
-		stps <- readline('| Please specify (use comma "," to split words): ')
-		cat("\n")
-		if(!all(strsplit(tolower(stps), "") %in% c(" ", ",", "", letters))){
-			message("| Unacceptable character is entered! Please type again! \n")
-		} else break
+	  repeat{
+	    message("| Do you have any Additional Stopwords? ")
+	    message("| If none, press <Enter> without typing any letters. ")
+	    stps <- readline('| Please specify (use comma "," to split words): ')
+	    cat("\n")
+	    if(!all(strsplit(tolower(stps), "")[[1]] %in% c(" ", ",", "", letters))){
+	      message("| Unacceptable character is entered! Please type again! \n")
+	    } else break
+	  }
 		
 		stops <- strsplit(gsub(" ", "", tolower(stps)), ",")[[1]]
 		
@@ -71,8 +77,9 @@ TMV.Q <- function(index, max.freq, max.cor){
 		
     repeat{
       opt <- readline("| Could you confirm (Y/N)? ")
+      cat("\n")
       if(!toupper(opt) %in% c("Y", "N")){
-        message('| Only "Y" or "N" is acceptable! ')
+        message('| Only "Y" or "N" is acceptable! \n')
       } else break
     }
     if(toupper(opt) == "Y") {
@@ -87,11 +94,12 @@ TMV.Q <- function(index, max.freq, max.cor){
 	# Output: e$spars, numeric vector of length 1
 	Q4.2 <- function(){
 		repeat{
-			spars <- readline("| How many words to you want to keep in the frequency plot: ")
+		  message("| Please specify the Sparsity, which should be a value between 0 and 1. ")
+			spars <- readline("| How much do you want the sparsity to be for afterwards analysis: ")
 			cat("\n")
 			if(!all(strsplit(spars, split = "")[[1]] %in% c(as.character(0:9),"."))) {
 				message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
-			}elseif(as.numeric(spars) >= 1 |as.numeric(spars) <= 0){
+			}else if(as.numeric(spars) >= 1 |as.numeric(spars) <= 0){
 				message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
 			}else {
 				return(as.numeric(spars)) 
@@ -147,13 +155,13 @@ TMV.Q <- function(index, max.freq, max.cor){
 			low_freq <- readline("| Please enter the min. freq. for a word to enter the plot: ")
 			cor_thres <- readline("| Please enter the min. cor. rate for a word to enter the plot: ")
 			cat("\n")
-			if(!all(strsplit(low_freq, split = "")[[1]] %in% as.character(0:9)){
+			if(!all(strsplit(low_freq, split = "")[[1]] %in% as.character(0:9))){
 				message("| Please do enter a positive integer for the frequency!\n")
-			}elseif(as.numeric(low_freq) > max.freq){
+			}else if(as.numeric(low_freq) > max.freq){
 				message("| Your input exceeds the maximum frequency: ", max.freq, "!\n")
-			}elseif(!all(strsplit(cor_thres, split = "")[[1]] %in% c(as.character(0:9),".")){
+			}else if(!all(strsplit(cor_thres, split = "")[[1]] %in% c(as.character(0:9),"."))){
 				message("| Please do enter a positive decimal between 0 and 1 for the correlation!\n")
-			}elseif(as.numeric(cor_thres) > max.cor){
+			}else if(as.numeric(cor_thres) > max.cor){
 				message("| Your input exceeds the maximum correlation: ", max.cor, "!\n")
 			}else{
 				return(as.numeric(low_freq), as.numeric(cor_thres))
