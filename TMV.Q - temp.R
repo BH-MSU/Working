@@ -55,7 +55,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
 		stops <- strsplit(gsub(" ", "", tolower(stps)), ",")[[1]]
 		
 		if(length(stops) == 0) {
-      message("| You don't need any additional stopwords. ")
+      message("| You don't need any Additional Stopwords. ")
     } else {
       message("| The new stopword(s) that you specified: ")
 			

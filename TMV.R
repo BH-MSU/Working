@@ -383,9 +383,13 @@ TMV <- function(){
 		                         stringsAsFactors = FALSE)
 		  cor_pairs <- rbind(cor_pairs, cor_pair)
 		}
-		
-		max.cor <- 0.2
+		max.cor <- max(cor_pairs[[3]])
 		# max.cor <- check.cor(t(e$tdmm2))
+		message("| The statistical summary of words Frequency and Associations are: ")
+		print(summary(e$freq2))
+		print(summary(cor_pairs))
+		cat("\n")
+		
 		repeat{
 			# Question 5.3: Minimum frequency for a word to get into the association plot
 			# Input: 1. min frequency for a variable to get into the association plot
