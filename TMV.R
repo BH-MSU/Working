@@ -51,7 +51,7 @@ req.pcg <- function(pcg){
   sapply(pcg, require, warn.conflicts = FALSE, character.only = TRUE, quietly = TRUE)  
 }
 
-all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", 
+all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph", "gridExtra",
              "Rweibo", "Rwordseg", "rJava", "RWeka", "ggdendro", "topicmodels")
 # rJava is needed for installing and requiring Rwordseg
@@ -365,7 +365,7 @@ TMV <- function(){
       set.seed(123)
       wordcloud(e$wf2$word, e$wf2$freq, min.freq = e$min.freqc, rot.per = .3, 
                 random.order = FALSE, colors=brewer.pal(6, "Dark2"))
-      message("| ", e$min.freq, " is set as the minimum frequency for the wordcloud.\n")
+      message("| ", e$min.freqc, " is set as the minimum frequency for the wordcloud.\n")
       opt <- TMV.Q(index = 9)
       if(toupper(opt) == "Y") break
     }
@@ -373,6 +373,18 @@ TMV <- function(){
     # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
     #    Correlation output .csv
 		max.freq <- max(e$freq2)
+		cor_pairs <- data.frame()
+		for(i in 1:length(e$freq2)){
+		  cor <- findAssocs(e$tdm2, names(e$freq2)[i], corlimit = 0)
+		  cor_pair <- data.frame(Word1 = names(e$freq2)[i], 
+		                         Word2 = rownames(cor), 
+		                         Assocs = cor[, 1], 
+		                         row.names = NULL, 
+		                         stringsAsFactors = FALSE)
+		  cor_pairs <- rbind(cor_pairs, cor_pair)
+		}
+		
+		max.cor <- 0.2
 		# max.cor <- check.cor(t(e$tdmm2))
 		repeat{
 			# Question 5.3: Minimum frequency for a word to get into the association plot
