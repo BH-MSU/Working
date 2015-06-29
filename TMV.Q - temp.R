@@ -1,4 +1,4 @@
-TMV.Q <- function(index, max.freq, max.cor){
+TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
 	# collection of all questions in TMV program
 	# 1. indicating index and bump up corresponding questions
 	# 2. determine the validity of the input for each question
@@ -150,7 +150,7 @@ TMV.Q <- function(index, max.freq, max.cor){
 	# Output: e$low_freq, numeric vector of length 1; e$cor_thres, numeric vector of length 1
 	# Parameters: 1. max.freq: maximum frequency of a word in the dtm
 	#							2. max.cor: maximum correlation between words in the dtm
-	Q5.3 <- function(max.freq, max.cor){
+	Q5.3 <- function(max.freq = max.freq, max.cor = max.cor){
 		repeat{
 			low_freq <- readline("| Please enter the min. freq. for a word to enter the plot: ")
 			cor_thres <- readline("| Please enter the min. cor. rate for a word to enter the plot: ")
@@ -164,7 +164,7 @@ TMV.Q <- function(index, max.freq, max.cor){
 			}else if(as.numeric(cor_thres) > max.cor){
 				message("| Your input exceeds the maximum correlation: ", max.cor, "!\n")
 			}else{
-				return(as.numeric(low_freq), as.numeric(cor_thres))
+				return(c(as.numeric(low_freq), as.numeric(cor_thres)))
 				break
 			}
 		}
@@ -193,7 +193,8 @@ TMV.Q <- function(index, max.freq, max.cor){
 	# Output:
 	Q999 <- function(){
 		repeat{
-			opt <- readline("| Are you satisfied with the output (Y/N)?")
+			opt <- readline("| Are you satisfied with the output (Y/N)? ")
+			cat("\n")
 			if(!toupper(opt) %in% c("Y", "N")){
 				message("| Only Y or N is acceptable! \n")
 			} else {
@@ -203,6 +204,29 @@ TMV.Q <- function(index, max.freq, max.cor){
 		}
 	}
 	
+	# Index = 10
+	# Question 6.1 : - No. of Topics and No. of Terms 1 Topic can have
+	# Input: 1. No. of Topics
+	#        2. No. of Terms
+	Q6.1 <- function(max.topic = max.topic, max.term = max.term) {
+	  repeat{
+	    n_topic <- readline("| Please enter the number of topic you'd like: ")
+	    n_term <- readline("| Please enter the number of terms one topic should have: ")
+	    cat("\n")
+	    if(!all(strsplit(n_topic, split = "")[[1]] %in% as.character(0:9))){
+	      message("| Please do enter a positive integer for the frequency!\n")
+	    }else if(as.numeric(n_topic) > max.topic){
+	      message("| Your input exceeds the maximum frequency: ", max.freq, "!\n")
+	    }else if(!all(strsplit(n_term, split = "")[[1]] %in% c(as.character(0:9),"."))){
+	      message("| Please do enter a positive decimal between 0 and 1 for the correlation!\n")
+	    }else if(as.numeric(n_term) > max.term){
+	      message("| Your input exceeds the maximum correlation: ", max.cor, "!\n")
+	    }else{
+	      return(c(as.numeric(n_topic), as.numeric(n_term)))
+	      break
+	    }
+	  }
+	}
 	
 	L_index <- LETTERS[index]
   switch(L_index,
@@ -211,10 +235,10 @@ TMV.Q <- function(index, max.freq, max.cor){
          C = Q4.2(),
          D = Q5.1(),
          E = Q5.2(),
-         G = Q5.3(),
+         G = Q5.3(max.freq, max.cor),
          H = Q5.4(),
-				 I = Q999())
-	
+				 I = Q999(), 
+				 J = Q6.1(max.topic, max.term))
 }
 
 
