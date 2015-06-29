@@ -487,19 +487,20 @@ TMV <- function(){
   
 	if(length(e$stops) == 0){
 	  e$tdm1 <- e$tdm0
+	  e$tdmm1 <- as.matrix(e$tdm1)
+	  freq1 <- rowSums(e$tdmm1)
+	  e$freq1 <- freq1[order(freq1, decreasing = TRUE)]
 	} else {
 	  e$tdm1 <- e$tdm0[ - which(rownames(e$tdm0) %in% e$stops), ]
+	  e$tdmm1 <- as.matrix(e$tdm1)
+	  freq1 <- rowSums(e$tdmm1)
+	  e$freq1 <- freq1[order(freq1, decreasing = TRUE)]
+	  message("| The data contains ", ncol(e$tdm1), " pieces of text(document),")
+	  message("| including ", nrow(e$tdm1), " unique words. \n")
+	  message("| The statistical summary of words frequency is as follows: ")
+	  print(summary(e$freq1))
+	  cat("\n")
 	}
-  
-	e$tdmm1 <- as.matrix(e$tdm1)
-	freq1 <- rowSums(e$tdmm1)
-  # table(freq)
-  e$freq1 <- freq1[order(freq1, decreasing = TRUE)]
-  message("| The data contains ", ncol(e$tdm1), " pieces of text(document),")
-  message("| including ", nrow(e$tdm1), " unique words. \n")
-  message("| The statistical summary of words frequency is as follows: ")
-  print(summary(e$freq1))
-  cat("\n")
   
   # Q2: Sparsity? (big loop) 
   repeat{
