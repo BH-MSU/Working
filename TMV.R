@@ -295,7 +295,8 @@ req.pcg <- function(pcg){
 
 all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph", "gridExtra",
-             "Rweibo", "Rwordseg", "rJava", "RWeka", "ggdendro", "topicmodels")
+             "Rweibo", "Rwordseg", "rJava", "RWeka", "ggdendro", "topicmodels", 
+             "circlize", "GISTools")
 # rJava is needed for installing and requiring Rwordseg
 req.pcg(all.pcg)
 
@@ -692,9 +693,35 @@ TMV <- function(){
 					 attrs = attrs, 
 					 weighting = TRUE)
 			dev.off()
-			
+			message('| Please look to the plot zone for the Association Plot. ')
+			message('| "AssociationPlot.pdf" is exported. \n')
 			opt <- TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
+		}
+		
+		repeat{
+		  message('| You can specify a single word to see its relationship with others. ')
+		  message('| Be sure the word you specified is in the following words: ')
+		  print(unique(e$cor_pairs[[1]]))
+		  cat("\n")
+		  opt <- readline('| Please specify the word you are interested in: ')
+		  if(!tolower(opt) %in% unique(e$cor_pairs[[1]])){
+		    message("| The word you specified doesn't exist in the current data! ")
+		  } else {
+		    word <- tolower(opt)
+		    cor <- findAssocs(e$tdm2, word, corlimit = 0)
+		    message("| Following are the Correlated Words and their Associations. ")
+		    print(cor)
+		    cat("\n")
+		    plot(e$tdm2,
+		         terms = names(cor),
+		         corThreshold = 0.01,
+		         attrs = attrs, 
+		         weighting = TRUE)
+		    message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
+		    opt <- TMV.Q(index = 9)
+		    if(toupper(opt) == "Y") break
+		  }
 		}
     
     # 4.0 hclust
