@@ -118,7 +118,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
   # Output: e$ncol_freq, numeric vector of length 1
   Q5.1 <- function(){
     repeat{
-      ncol_freq <- readline("| How many words do you want in the frequency plot: ")
+      ncol_freq <- readline("| How many words do you want for the frequency plot: ")
       cat("\n")
       if(!all(strsplit(ncol_freq, split = "")[[1]] %in% as.character(0:9))) {
         message("| Please do enter a positive integer!\n")
@@ -158,11 +158,11 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
       low_freq <- readline("| Please enter the min. freq. for a word to enter the plot: ")
       cor_thres <- readline("| Please enter the min. cor. rate for a word to enter the plot: ")
       cat("\n")
-      if(!all(strsplit(low_freq, split = "")[[1]] %in% as.character(0:9))|length(low_freq)==0){
+      if(!all(strsplit(low_freq, split = "")[[1]] %in% as.character(0:9))|nchar(low_freq)==0){
         message("| Please do enter a positive integer for the frequency!\n")
       }else if(as.numeric(low_freq) > max.freq){
         message("| Your input exceeds the maximum frequency: ", max.freq, "!\n")
-      }else if(!all(strsplit(cor_thres, split = "")[[1]] %in% c(as.character(0:9),"."))|length(low_freq)==0){
+      }else if(!all(strsplit(cor_thres, split = "")[[1]] %in% c(as.character(0:9),"."))|nchar(low_freq)==0){
         message("| Please do enter a positive decimal between 0 and 1 for the correlation!\n")
       }else if(as.numeric(cor_thres) > max.cor){
         message("| Your input exceeds the maximum correlation: ", max.cor, "!\n")
@@ -271,6 +271,74 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
 #     }
 #   }
 # } # end of function arrange_ggplot2()
+
+#---------------#
+# circos.plot() #
+#---------------#
+circos.plot <- function(dtm, pair.cor, min.cor){
+	# dtm: document-term matrix in normal matrix format
+	# pair.cor: correlation data frame with 3 columns:
+	#						1. Word 1, type character
+	#						2. Word 2, type character
+	#						3. correlation, type numeric
+	if(!require(RColorBrewer))require(RColorBrewer)
+	if(!require(circlize))require(circlize)
+	if(!require(GISTools))require(GISTools)
+
+	freq <- data.frame(category = colnames(dtm), freq = colSums(dtm),
+										 stringsAsFactors = F)
+	freq <- freq[order(freq[,2], decreasing = T),]
+	len.word <- ifelse(nrow(freq) < 20, nrow(freq), 20)
+	freq2 <- rbind(freq[1:len.word,], 
+								 data.frame(category = freq[1:len.word,1], 
+														freq = rep(0,len.word),
+														stringsAsFactors = F))
+	freq2 <- data.frame(freq2, pseudo = rep(LETTERS[1:len.word]),
+											stringsAsFactors = F)
+	par(mar = c(1,1,1,1), lwd = 0.1, cex = 0.7)
+	circos.par("track.height" = 0.1)
+	# circos.initialize(factors = freq2$category, x = freq2$freq)
+	circos.initialize(factors = rep(freq2$pseudo), x = freq2$freq)
+	circos.trackPlotRegion(track.height = .15, ylim = c(0, 2),
+												 bg.col =  brewer.pal(9, "OrRd")[5], bg.border = NA,
+												 # bg.col = rainbow(34)[1:20]
+												 panel.fun = function(x, y){
+													 xlim = get.cell.meta.data("xlim")
+													 ylim = c(0, 2)
+													 sector.index = get.cell.meta.data("sector.index")
+													 sector.label = paste(freq2$category[freq2$pseudo == sector.index],
+																								"\n(",freq2$freq[freq2$pseudo == sector.index],
+																								")", sep = "")
+													 circos.text(mean(xlim), y = 1, sector.label, 
+																			 facing = "inside", col = "white",
+																			 cex = 1.1, font = 2, niceFacing = TRUE)
+												 })
+	cor2 <- pair.cor[pair.cor[,1] %in% freq2$category & pair.cor[,2] %in% freq2$category & pair.cor[,3] > min.cor, ]
+	
+	for (i in 1:nrow(cor2)){
+		cor2[i, 1] <- freq2[1:len.word,]$pseudo[freq2[1:len.word,]$category == cor2[i, 1]]
+		cor2[i, 2] <- freq2[1:len.word,]$pseudo[freq2[1:len.word,]$category == cor2[i, 2]]
+	}
+
+	for (i in 1:nrow(cor2)){
+		min1 <- min(freq2[freq2$pseudo == cor2[i,1], "freq"] )
+		max1 <- max(freq2[freq2$pseudo == cor2[i,1], "freq"] )
+		min2 <- min(freq2[freq2$pseudo == cor2[i,2], "freq"] )
+		max2 <- max(freq2[freq2$pseudo == cor2[i,2], "freq"] )
+		l.limit.1 <- (min1+(min1+max1)/2)/2
+		l.limit.2 <- (min2+(min2+max2)/2)/2
+		u.limit.1 <- (max1+(min1+max1)/2)/2
+		u.limit.2 <- (max2+(min2+max2)/2)/2
+		circos.link(cor2[i, 1], c(l.limit.1, u.limit.1), 
+								cor2[i, 2], c(l.limit.2, u.limit.2),
+								col = add.alpha(brewer.pal(9,"Reds")[3:9][round((nrow(cor2)-i)/nrow(cor2)*7, 0)], 0.5))
+		
+	}
+	
+	dev.copy(png, "CircosPlot.png", 1200, 1200, units = "px")
+	dev.off()
+}
+
 
 
 #--------------------------------
@@ -496,11 +564,10 @@ TMV <- function(){
 		coord_flip()                                  						    				
   
   e$p1 <- p1
-  grid.arrange(e$p1, ncol = 1)
-	# png("p1_top20_word_freq.png", width = 1000, height = 1200, units = "px", bg = "transparent")
+  # grid.arrange(e$p1, ncol = 1)
+	print(e$p1)
 	message("| Please check the Words Frequency Plot at the plot zone.\n")
-	ggsave("p1_top20_word_freq.png", p1, width = 300, height = 360, units = "mm", bg = "transparent")
-	# dev.off()
+	ggsave("p1_top40_word_freq.png", p1, width = 300, height = 360, units = "mm", bg = "transparent")
 	
 	#--------------------------------------------------------------------------------
   # STEP 4  Deeper Analysis Preparation
@@ -572,7 +639,7 @@ TMV <- function(){
     
 		# 1. Frequency Plot: ncol_freq?
     cat(paste("|", paste(rep("*",27), collapse = "")), 
-        "|    SECTION 1. FREQUENCY PLOT",
+        "|  SECTION 1. FREQUENCY PLOT",
         paste("|", paste(rep("*",27), collapse = "")),
         "", sep = "\n")
     
@@ -604,7 +671,6 @@ TMV <- function(){
 			       units = "in", bg = "transparent")
 			
 			message("| Please check the Words Frequency Plot at the plot zone.\n")
-			# dev.off()
 			
 			# index = 9: always satisfactory question
       opt <- TMV.Q(index = 9)
@@ -619,7 +685,7 @@ TMV <- function(){
     
     # 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
     cat(paste("|", paste(rep("*",23), collapse = "")), 
-        "|      SECTION 2. WORD CLOUD",
+        "|  SECTION 2. WORD CLOUD",
         paste("|", paste(rep("*",23), collapse = "")),
         "",sep = "\n")
     
@@ -631,8 +697,8 @@ TMV <- function(){
 			
       set.seed(123)
       wordcloud(e$wf2$word, e$wf2$freq, min.freq = e$min.freqc, rot.per = .3, 
-                random.order = FALSE, colors=brewer.pal(6, "Dark2"))
-      png("WordCloud.png", width = 1000, height = 1000, units = "px")
+                random.order = FALSE, colors = brewer.pal(6, "Dark2"))
+      dev.copy(png, "WordCloud.png", width = 1000, height = 1000, units = "px")
       dev.off()
       message("| ", e$min.freqc, " is set as the minimum frequency for the wordcloud.\n")
       opt <- TMV.Q(index = 9)
@@ -642,17 +708,17 @@ TMV <- function(){
     # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
     #    Correlation output .csv
     cat(paste("|", paste(rep("*",29), collapse = "")), 
-        "|   SECTION 3. ASSOCIATION PLOT",
+        "|  SECTION 3. ASSOCIATION PLOT",
         paste("|", paste(rep("*",29), collapse = "")),
         "", sep = "\n")
     
 		max.freq <- max(e$freq2)
 		cor_pairs <- data.frame()
 		for(i in 1:length(e$freq2)){
-		  cor <- findAssocs(e$tdm2, names(e$freq2)[i], corlimit = 0)
+		  cor1 <- findAssocs(e$tdm2, names(e$freq2)[i], corlimit = 0)
 		  cor_pair <- data.frame(Word1 = names(e$freq2)[i], 
-		                         Word2 = rownames(cor), 
-		                         Assocs = cor[, 1], 
+		                         Word2 = rownames(cor1), 
+		                         Assocs = cor1[, 1], 
 		                         row.names = NULL, 
 		                         stringsAsFactors = FALSE)
 		  cor_pairs <- rbind(cor_pairs, cor_pair)
@@ -660,11 +726,34 @@ TMV <- function(){
 		e$cor_pairs <- cor_pairs <- distinct(cor_pairs)
 		max.cor <- max(cor_pairs[[3]])
 		# max.cor <- check.cor(t(e$tdmm2))
-		message("| The summary of words Frequency are: ")
+		message("| The summary of word Frequency: ")
 		print(summary(e$freq2))
-		message("\n| The summary of words Associations are: ")
+		message("\n| The summary of word Association: ")
 		print(summary(cor_pairs[[3]]))
 		cat("\n")
+		
+		cat("| Per below you could find a circos plot of top20 words and their association.\n")
+		repeat{
+			repeat{
+				min.assc <- readline("| Please enter to minimum correlation rate you want to check: ")
+				if(!all(strsplit(min.assc, split = "")[[1]] %in% c(as.character(0:9),"."))) {
+					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
+				}else if(as.numeric(min.assc) >= 1 |as.numeric(min.assc) <= 0){
+					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
+				}else {
+					min.assc <- as.numeric(min.assc)
+					break
+				}
+			}
+			
+			circos.plot(as.data.frame(t(e$tdmm2)), e$cor_pairs, min.assc)
+			message('| Please look to the plot zone for the Circos Plot. ')
+			message('| "CircosPlot.png" is exported. \n')
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+		
+		readline("| You could find more detailed stats and graphs in the following steps.\n| Press <Enter> to continue...\n")
 		
 		repeat{
 			# Question 5.3: Minimum frequency for a word to get into the association plot
@@ -678,20 +767,14 @@ TMV <- function(){
 			e$corth <- ans5_3[2]
 			
 			attrs <- list(node = list(shape = "ellipse", fixedsize = FALSE,
-																style = "invis", fontcolor = "white",
-																fillcolor = "red"),
-										edge = list(dir = "both", color = "darkblue", weight = 1.2))
+																style = "invis", fontcolor = "white", fillcolor = "orange"),
+										edge = list(dir = "both", color = "grey", weight = 1.2)) 
 			plot(e$tdm2,
 			     terms = findFreqTerms(e$tdm2, lowfreq = e$min.freqa),
 			     corThreshold = e$corth,
 			     attrs = attrs, 
 			     weighting = TRUE)
-			pdf("AssociationPlot.pdf", 9, 9)
-			plot(e$tdm2,
-					 terms = findFreqTerms(e$tdm2, lowfreq = e$min.freqa),
-					 corThreshold = e$corth,
-					 attrs = attrs, 
-					 weighting = TRUE)
+			dev.copy(pdf, "AssociationPlot.pdf", 9, 9)
 			dev.off()
 			message('| Please look to the plot zone for the Association Plot. ')
 			message('| "AssociationPlot.pdf" is exported. \n')
@@ -701,7 +784,7 @@ TMV <- function(){
 		
 		repeat{
 		  message('| You can specify a single word to see its relationship with others. ')
-		  message('| Be sure the word you specified is in the following words: ')
+		  message('| Be sure the word you specified is in the following word list: ')
 		  print(unique(e$cor_pairs[[1]]))
 		  cat("\n")
 		  opt <- readline('| Please specify the word you are interested in: ')
@@ -709,16 +792,20 @@ TMV <- function(){
 		    message("| The word you specified doesn't exist in the current data! ")
 		  } else {
 		    word <- tolower(opt)
-		    cor <- findAssocs(e$tdm2, word, corlimit = 0)
+		    word_cor <- findAssocs(e$tdm2, word, corlimit = 0)
+				
 		    message("| Following are the Correlated Words and their Associations. ")
-		    print(cor)
+		    print(word_cor[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor)), ])
 		    cat("\n")
 		    plot(e$tdm2,
-		         terms = names(cor),
+		         terms = rownames(word_cor)[1:20],
 		         corThreshold = 0.01,
 		         attrs = attrs, 
 		         weighting = TRUE)
+				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 9, 9)
+				dev.off()
 		    message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
+				message(paste('| ',word, '"_AssociationPlot.pdf" is exported. \n', sep = ""))
 		    opt <- TMV.Q(index = 9)
 		    if(toupper(opt) == "Y") break
 		  }
@@ -735,7 +822,8 @@ TMV <- function(){
     # method = "ward.D", "ward.D2", "single", "complete", "average"...
     repeat{
       plot(fit)
-      png("dendrogram.png", width = 1000, height = 1000, units = "px")
+      dev.copy(png, "dendrogram.png", width = 1000, height = 1000, units = "px")
+			dev.off()
       # ggdendrogram(dendro_data(fit))
       
       # 4.1 rect.hclust: k?
@@ -747,6 +835,8 @@ TMV <- function(){
 			e$clustterm <- TMV.Q(index = 8)
 			message("| The main ", e$clustterm, " clusters are plotted in red rectangles.")
 			rect.hclust(fit, k = e$clustterm)
+			dev.copy(png, "rect.dendrogram.png", width = 1000, height = 1000, units = "px")
+			dev.off()
 			# rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
 			#             border = 2, cluster = NULL)
 			
@@ -840,8 +930,11 @@ TMV <- function(){
       } else break
     }
     if(toupper(opt) == "Y") break
+		
+		# dev.off()
   }
   
+	
   # STEP 6 final output
   message("| Thank you for using MSU TMV tool! Hope to see you again! Bye~ \n")
   setwd(e$wd_rcv)
