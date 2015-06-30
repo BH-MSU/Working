@@ -196,7 +196,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
   # Output:
   Q999 <- function(){
     repeat{
-      opt <- readline("| Are you satisfied (Y/N)? ")
+      opt <- readline("| Are you OK with the result (Y/N)? ")
       cat("\n")
       if(!toupper(opt) %in% c("Y", "N")){
         message("| Only Y or N is acceptable! \n")
@@ -248,29 +248,29 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
 # arrange_ggplot2()                    #
 #--------------------------------------#
 ## Function for arranging ggplots. use png(); arrange(p1, p2, ncol=1); dev.off() to save.
-suppressMessages(require(grid))
-vp.layout <- function(x, y) viewport(layout.pos.row=x, layout.pos.col=y)
-arrange_ggplot2 <- function(..., nrow=NULL, ncol=NULL, as.table=FALSE) {
-  dots <- list(...)
-  n <- length(dots)
-  if(is.null(nrow) & is.null(ncol)) { nrow = floor(n/2) ; ncol = ceiling(n/nrow)}
-  if(is.null(nrow)) { nrow = ceiling(n/ncol)}
-  if(is.null(ncol)) { ncol = ceiling(n/nrow)}
-  ## NOTE see n2mfrow in grDevices for possible alternative
-  grid.newpage()
-  pushViewport(viewport(layout=grid.layout(nrow,ncol) ) )
-  ii.p <- 1
-  for(ii.row in seq(1, nrow)){
-    ii.table.row <- ii.row    
-    if(as.table) {ii.table.row <- nrow - ii.table.row + 1}
-    for(ii.col in seq(1, ncol)){
-      ii.table <- ii.p
-      if(ii.p > n) break
-      print(dots[[ii.table]], vp=vp.layout(ii.table.row, ii.col))
-      ii.p <- ii.p + 1
-    }
-  }
-} # end of function arrange_ggplot2()
+# suppressMessages(require(grid))
+# vp.layout <- function(x, y) viewport(layout.pos.row=x, layout.pos.col=y)
+# arrange_ggplot2 <- function(..., nrow=NULL, ncol=NULL, as.table=FALSE) {
+#   dots <- list(...)
+#   n <- length(dots)
+#   if(is.null(nrow) & is.null(ncol)) { nrow = floor(n/2) ; ncol = ceiling(n/nrow)}
+#   if(is.null(nrow)) { nrow = ceiling(n/ncol)}
+#   if(is.null(ncol)) { ncol = ceiling(n/nrow)}
+#   ## NOTE see n2mfrow in grDevices for possible alternative
+#   grid.newpage()
+#   pushViewport(viewport(layout=grid.layout(nrow,ncol) ) )
+#   ii.p <- 1
+#   for(ii.row in seq(1, nrow)){
+#     ii.table.row <- ii.row    
+#     if(as.table) {ii.table.row <- nrow - ii.table.row + 1}
+#     for(ii.col in seq(1, ncol)){
+#       ii.table <- ii.p
+#       if(ii.p > n) break
+#       print(dots[[ii.table]], vp=vp.layout(ii.table.row, ii.col))
+#       ii.p <- ii.p + 1
+#     }
+#   }
+# } # end of function arrange_ggplot2()
 
 
 #--------------------------------
@@ -362,7 +362,7 @@ TMV <- function(){
   e$corpus0 <- e$corpus0          %>% 
 		tm_map(stemDocument)
   
-	message('| The file is imported, and is transformed in a primary way. \n')
+	message('| The file is imported and the basic clean-up is done. \n')
 	
 	# change words into original form
 	e$tdm0 <- TermDocumentMatrix(e$corpus0)
@@ -570,9 +570,9 @@ TMV <- function(){
     #          if satisfied, save useful objects for final output
     
 		# 1. Frequency Plot: ncol_freq?
-    cat(paste("|", paste(rep("*",31), collapse = "")), 
+    cat(paste("|", paste(rep("*",27), collapse = "")), 
         "|    SECTION 1. FREQUENCY PLOT",
-        paste("|", paste(rep("*",31), collapse = "")),
+        paste("|", paste(rep("*",27), collapse = "")),
         "", sep = "\n")
     
     repeat{
@@ -617,9 +617,9 @@ TMV <- function(){
     }
     
     # 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
-    cat(paste("|", paste(rep("*",31), collapse = "")), 
+    cat(paste("|", paste(rep("*",23), collapse = "")), 
         "|      SECTION 2. WORD CLOUD",
-        paste("|", paste(rep("*",31), collapse = "")),
+        paste("|", paste(rep("*",23), collapse = "")),
         "",sep = "\n")
     
     repeat{
@@ -640,9 +640,9 @@ TMV <- function(){
     
     # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
     #    Correlation output .csv
-    cat(paste("|", paste(rep("*",31), collapse = "")), 
+    cat(paste("|", paste(rep("*",29), collapse = "")), 
         "|   SECTION 3. ASSOCIATION PLOT",
-        paste("|", paste(rep("*",31), collapse = "")),
+        paste("|", paste(rep("*",29), collapse = "")),
         "", sep = "\n")
     
 		max.freq <- max(e$freq2)
@@ -706,13 +706,14 @@ TMV <- function(){
     DistMat <- dist(scale(e$tdmm2))
     fit <- hclust(DistMat, method = "ward.D") 
     # method = "ward.D", "ward.D2", "single", "complete", "average"...
-    plot(fit)
-    png("dendrogram.png", , width = 1000, height = 1000, units = "px")
-    # ggdendrogram(dendro_data(fit))
-    
-    # 4.1 rect.hclust: k?
-    # cut tree into k clusters
-		repeat{
+    repeat{
+      plot(fit)
+      png("dendrogram.png", width = 1000, height = 1000, units = "px")
+      # ggdendrogram(dendro_data(fit))
+      
+      # 4.1 rect.hclust: k?
+      # cut tree into k clusters
+		
 			# Question 5.4: No. of Clusters
 			# Input: No. of clusters
 			# Output: e$no.clust, numeric vector of length 1
@@ -792,7 +793,7 @@ TMV <- function(){
       write.csv(data.frame(Document = names(topics(lda)), 
                            Topic = topics(lda)), 
                 "document_topics.csv", row.names = FALSE)
-      message('| "document_topics.csv" is exported. \n')
+      message('\n| "document_topics.csv" is exported. \n')
       # term <- apply(term, MARGIN = 2, paste, collapse = ", ")
       # topic <- topics(lda, 1)
       # topics <- data.frame(date=as.IDate(tweets.df$created), topic)
