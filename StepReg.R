@@ -1133,12 +1133,16 @@ StepReg <- function(){
   
   # STEP 0.5 
   # save original work directory for final recover
-  if("wd_recover" %in% ls(e)) setwd(e$wd_recover) else e$wd_recover <- getwd()
+  if("wd_rcv" %in% ls(e)) setwd(e$wd_rcv) else e$wd_rcv <- getwd()
   
   # STEP 0.6
   # set working directory
-  if(!file.exists("StepReg_WD"))dir.create("StepReg_WD")
-  setwd(paste(e$wd_recover, "StepReg_WD", sep = "/"))
+  if(substr(e$wd_rcv, nchar(e$wd_rcv) - 9, nchar(e$wd_rcv)) == "StepReg_WD"){
+    e$wd_rcv <- substr(e$wd_rcv, 1, nchar(e$wd_rcv) - 11)
+  } else {
+    if(!file.exists("StepReg_WD")) dir.create("StepReg_WD")
+    setwd(paste(e$wd_rcv, "StepReg_WD", sep = "/"))
+  }
   
   e$fit1 <- NULL
   e$prmt <- data.frame(variable = character(),
@@ -1370,10 +1374,8 @@ StepReg <- function(){
   message("| Thank you for using StepReg tool! Goodbye! \n")
   
   # reset wd to the default after StepReg finished
-  setwd(e$wd_recover)
+  setwd(e$wd_rcv)
   
 } # end of function StepReg()
 
-# start StepReg system
-StepReg()
 
