@@ -244,61 +244,65 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
          J = Q6.1(max.topic, max.term))
 }
 
-#--------------------------------------#
-# arrange_ggplot2()                    #
-#--------------------------------------#
-## Function for arranging ggplots. use png(); arrange(p1, p2, ncol=1); dev.off() to save.
-# suppressMessages(require(grid))
-# vp.layout <- function(x, y) viewport(layout.pos.row=x, layout.pos.col=y)
-# arrange_ggplot2 <- function(..., nrow=NULL, ncol=NULL, as.table=FALSE) {
-#   dots <- list(...)
-#   n <- length(dots)
-#   if(is.null(nrow) & is.null(ncol)) { nrow = floor(n/2) ; ncol = ceiling(n/nrow)}
-#   if(is.null(nrow)) { nrow = ceiling(n/ncol)}
-#   if(is.null(ncol)) { ncol = ceiling(n/nrow)}
-#   ## NOTE see n2mfrow in grDevices for possible alternative
-#   grid.newpage()
-#   pushViewport(viewport(layout=grid.layout(nrow,ncol) ) )
-#   ii.p <- 1
-#   for(ii.row in seq(1, nrow)){
-#     ii.table.row <- ii.row    
-#     if(as.table) {ii.table.row <- nrow - ii.table.row + 1}
-#     for(ii.col in seq(1, ncol)){
-#       ii.table <- ii.p
-#       if(ii.p > n) break
-#       print(dots[[ii.table]], vp=vp.layout(ii.table.row, ii.col))
-#       ii.p <- ii.p + 1
-#     }
-#   }
-# } # end of function arrange_ggplot2()
-
 #---------------#
 # circos.plot() #
 #---------------#
-circos.plot <- function(dtm, pair.cor, min.cor){
+circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 	# dtm: document-term matrix in normal matrix format
 	# pair.cor: correlation data frame with 3 columns:
 	#						1. Word 1, type character
 	#						2. Word 2, type character
 	#						3. correlation, type numeric
+	# word: if it's an association plot for a specified word, specify it.
 	if(!require(RColorBrewer))require(RColorBrewer)
 	if(!require(circlize))require(circlize)
 	if(!require(GISTools))require(GISTools)
-
+	
+	# STEP 1.1
+	# freq: frequency of words in the corpus in descending order
 	freq <- data.frame(category = colnames(dtm), freq = colSums(dtm),
 										 stringsAsFactors = F)
 	freq <- freq[order(freq[,2], decreasing = T),]
-	len.word <- ifelse(nrow(freq) < 20, nrow(freq), 20)
-	freq2 <- rbind(freq[1:len.word,], 
-								 data.frame(category = freq[1:len.word,1], 
-														freq = rep(0,len.word),
+	
+	# STEP 1.2
+	# if the focused word is specified, return all words (if # < 20) or top 20 words (sorting by frequency) which have connection with the word
+	# if not, return top 20 words (sorting by frequency)
+	# keep only the words satisfying the criteria above
+	if (!is.null(word)){
+		len.word <- ifelse(nrow(pair.cor) < 19, nrow(pair.cor), 19)  # including the word specified totally 20 (19+1) words
+		topwords <- c(pair.cor[1:len.word, 2], word) # first len.word words ordered by correlation rate with the specified word
+	}else{
+		len.word <- ifelse(nrow(freq) < 20, nrow(freq), 20)
+		topwords <- freq[1:len.word, 1] # first len.word words ordered by frequency
+	}
+	
+	# STEP 1.3 
+	# Allocate the selected words and related frequency: e$freqchosen
+	# freq2 step 1: Extend e$freqchosen, make each term have an interval (to facilitate plotting)
+	# freq2 step 2: Add a column "Pseudo", select from LETTERS by the length of e$freqchosen
+	# str(freq2): 
+	# 	3 columns - category(words/terms), freq(terms frequency), pseudo(A,B,C,D,...)
+	# 	len.word observations in frequency descending order
+	e$freqchosen <- freq[freq[, 1] %in% topwords, ]    #subset(freq, freq[,1] %in% topwords)
+	freq2 <- rbind(e$freqchosen, 
+								 data.frame(category = e$freqchosen[,1], 
+														freq = rep(0,length(topwords)),
 														stringsAsFactors = F))
-	freq2 <- data.frame(freq2, pseudo = rep(LETTERS[1:len.word]),
+	freq2 <- freq2[order(freq2[,2], decreasing = T),]
+	freq2 <- data.frame(freq2, pseudo = rep(LETTERS[1:length(topwords)],2),
 											stringsAsFactors = F)
+											
+	# STEP 2.1 
+	# initialize the circos plot
 	par(mar = c(1,1,1,1), lwd = 0.1, cex = 0.7)
 	circos.par("track.height" = 0.1)
 	# circos.initialize(factors = freq2$category, x = freq2$freq)
 	circos.initialize(factors = rep(freq2$pseudo), x = freq2$freq)
+	
+	# STEP 2.2
+	# plot the circos:
+	# 	sector range depends on word frequency
+	# 	words and their frequency are also plotted
 	circos.trackPlotRegion(track.height = .15, ylim = c(0, 2),
 												 bg.col =  brewer.pal(9, "OrRd")[5], bg.border = NA,
 												 # bg.col = rainbow(34)[1:20]
@@ -313,18 +317,36 @@ circos.plot <- function(dtm, pair.cor, min.cor){
 																			 facing = "inside", col = "white",
 																			 cex = 1.1, font = 2, niceFacing = TRUE)
 												 })
-	cor2 <- pair.cor[pair.cor[,1] %in% freq2$category & pair.cor[,2] %in% freq2$category & pair.cor[,3] > min.cor, ]
 	
+	# STEP 2.3.1
+	# prepare the correlation data frame for the links (association lines) in the circos plot
+	# !!! input for pair.cor:
+	#  	CASE 1: parameter word not specified
+	# 		the correlation rates between all pairs of top 20 words (distinct)
+	#			3 columns Word1, Word2, Assocs (correlation)
+	# 	CASE 2: parameter word specified
+	#			the correlation rates between the specified word and all other words (e$freqchosen)
+	# 		3 columns Word1(containing only the specified word), Word2, Assocs (correlation)
+	
+	# if (!is.null(word)) {
+		# cor2 <- pair.cor[pair.cor[,2] %in% freq2[,1] & pair.cor[,3] > min.cor, ]
+	# }else{
+		# cor2 <- pair.cor[pair.cor[,1] %in% freq2[,1] & pair.cor[,2] %in% freq2[,1] & pair.cor[,3] > min.cor, ]
+	# }
+	cor2 <- pair.cor[pair.cor[,1] %in% freq2[,1] & pair.cor[,2] %in% freq2[,1] & pair.cor[,3] > min.cor, ]
+	# using pseudo to replace the word in column 1 and column 2 in cor2
 	for (i in 1:nrow(cor2)){
-		cor2[i, 1] <- freq2[1:len.word,]$pseudo[freq2[1:len.word,]$category == cor2[i, 1]]
-		cor2[i, 2] <- freq2[1:len.word,]$pseudo[freq2[1:len.word,]$category == cor2[i, 2]]
+		cor2[i, 1] <- freq2[1:length(topwords),3][freq2[1:length(topwords),1] == cor2[i, 1]]
+		cor2[i, 2] <- freq2[1:length(topwords),3][freq2[1:length(topwords),1] == cor2[i, 2]]
 	}
-
+	
+	# STEP 2.3.2
+	# plot
 	for (i in 1:nrow(cor2)){
-		min1 <- min(freq2[freq2$pseudo == cor2[i,1], "freq"] )
-		max1 <- max(freq2[freq2$pseudo == cor2[i,1], "freq"] )
-		min2 <- min(freq2[freq2$pseudo == cor2[i,2], "freq"] )
-		max2 <- max(freq2[freq2$pseudo == cor2[i,2], "freq"] )
+		min1 <- min(freq2[freq2[, 3] == cor2[i,1], "freq"] )
+		max1 <- max(freq2[freq2[, 3] == cor2[i,1], "freq"] )
+		min2 <- min(freq2[freq2[, 3] == cor2[i,2], "freq"] )
+		max2 <- max(freq2[freq2[, 3] == cor2[i,2], "freq"] )
 		l.limit.1 <- (min1+(min1+max1)/2)/2
 		l.limit.2 <- (min2+(min2+max2)/2)/2
 		u.limit.1 <- (max1+(min1+max1)/2)/2
@@ -335,7 +357,7 @@ circos.plot <- function(dtm, pair.cor, min.cor){
 		
 	}
 	
-	dev.copy(png, "CircosPlot.png", 1200, 1200, units = "px")
+	png(paste(if(is.null(word)) NULL else toupper(word), "CircosPlot.png", sep = ""), 1000, 1000, units = "px")
 	dev.off()
 }
 
@@ -427,8 +449,8 @@ TMV <- function(){
   
   e$corpus0 <- e$corpus0              %>% 
     tm_map(removePunctuation)         
-  
-  e$corpus0 <- e$corpus0          %>% 
+  e$corpus0C <- e$corpus0
+  e$corpus0 <- e$corpus0              %>% 
 		tm_map(stemDocument)
   
 	message('| The file is imported and the basic clean-up is done. \n')
@@ -450,7 +472,7 @@ TMV <- function(){
 	    break
   	} else if(toupper(opt) == "Y") {
   	  write.csv(data.frame(Stems = names(e$freq0), 
-  	                       Completions = stemCompletion(names(e$freq0), e$corpus0, "shortest"), 
+  	                       Completions = stemCompletion(names(e$freq0), e$corpus0C, "shortest"), 
   	                       Frequency = e$freq0, 
   	                       stringsAsFactors = FALSE), 
   	            # default method: prevalent, takes the most frequent match as completion
@@ -793,23 +815,35 @@ TMV <- function(){
 		  } else {
 		    word <- tolower(opt)
 		    word_cor <- findAssocs(e$tdm2, word, corlimit = 0)
+				e$cor_pairs2 <- data.frame(Word1 = word, 
+																	 Word2 = rownames(word_cor), 
+																	 Assocs = word_cor[, 1], 
+																	 row.names = NULL, 
+																	 stringsAsFactors = FALSE)
+				circos.plot(as.data.frame(t(e$tdmm2)), e$cor_pairs2, 0, word)
+				
+				readline("| Press <Enter> to check the next plot...")
 				
 		    message("| Following are the Correlated Words and their Associations. ")
 		    print(word_cor[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor)), ])
 		    cat("\n")
 		    plot(e$tdm2,
-		         terms = rownames(word_cor)[1:20],
+		         terms = rownames(word_cor)[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor))],
 		         corThreshold = 0.01,
 		         attrs = attrs, 
 		         weighting = TRUE)
 				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 9, 9)
 				dev.off()
 		    message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
-				message(paste('| ',word, '"_AssociationPlot.pdf" is exported. \n', sep = ""))
+				message(paste('| "',word, '_AssociationPlot.pdf" is exported. \n', sep = ""))
 		    opt <- TMV.Q(index = 9)
 		    if(toupper(opt) == "Y") break
 		  }
 		}
+		
+		readline("| The single word association plot in circos plot format is also plotted.\n| Press <Enter> to continue...\n")
+		
+		
     
     # 4.0 hclust
     # Cluster Dendrogram:
