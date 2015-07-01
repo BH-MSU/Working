@@ -463,7 +463,13 @@ TMV <- function(){
 	e$tdmm0 <- as.matrix(e$tdm0)
 	freq0 <- rowSums(e$tdmm0)
 	e$freq0 <- freq0[order(freq0, decreasing = TRUE)]
-	
+	write.csv(data.frame(Stems = names(e$freq0), 
+										 Completions = stemCompletion(names(e$freq0), e$corpus0C, "shortest"), 
+										 Frequency = e$freq0, 
+										 stringsAsFactors = FALSE), 
+					# default method: prevalent, takes the most frequent match as completion
+					# risking of changing some words which don't need heuristic completion of stemming
+					"stemCompletion.csv", row.names = FALSE)
 	repeat{
 	  message('| Some words seem strange after stemmed by R. ')
 	  opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
@@ -472,15 +478,7 @@ TMV <- function(){
 	    message('| Only "Y" or "N" is acceptable! \n')
 	  } else if(toupper(opt) == "N") {
 	    break
-  	} else if(toupper(opt) == "Y") {
-  	  write.csv(data.frame(Stems = names(e$freq0), 
-  	                       Completions = stemCompletion(names(e$freq0), e$corpus0C, "shortest"), 
-  	                       Frequency = e$freq0, 
-  	                       stringsAsFactors = FALSE), 
-  	            # default method: prevalent, takes the most frequent match as completion
-  	            # risking of changing some words which don't need heuristic completion of stemming
-  	            "stemCompletion.csv", row.names = FALSE)
-  	  
+  	} else if(toupper(opt) == "Y") {  	  
   	  message('| A *.csv file named "stemCompletion.csv" is exported. ')
   	  message('| Please open it in Excel, check and type the corresponding complete words ')
   	  message('| on the 2nd column. Keep the 1st column words as they are. ')
