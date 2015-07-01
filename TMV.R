@@ -155,7 +155,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
   #							2. max.cor: maximum correlation between words in the dtm
   Q5.3 <- function(max.freq = max.freq, max.cor = max.cor){
     repeat{
-      low_freq <- readline("| Please enter the min. freq. for a word to enter the plot: ")
+      low_freq <- readline("| Please enter the min. freq. of a word for the plot: ")
       cor_thres <- readline("| Please enter the min. cor. rate for a word to enter the plot: ")
       cat("\n")
       if(!all(strsplit(low_freq, split = "")[[1]] %in% as.character(0:9))|nchar(low_freq)==0){
@@ -740,14 +740,17 @@ TMV <- function(){
 		cor_pairs <- data.frame()
 		for(i in 1:length(e$freq2)){
 		  cor1 <- findAssocs(e$tdm2, names(e$freq2)[i], corlimit = 0)
-		  cor_pair <- data.frame(Word1 = names(e$freq2)[i], 
-		                         Word2 = rownames(cor1), 
-		                         Assocs = cor1[, 1], 
-		                         row.names = NULL, 
-		                         stringsAsFactors = FALSE)
-		  cor_pairs <- rbind(cor_pairs, cor_pair)
+			if (class(cor1)=="matrix"){
+				cor_pair <- data.frame(Word1 = names(e$freq2)[i], 
+															 Word2 = rownames(cor1), 
+															 Assocs = cor1[, 1], 
+															 row.names = NULL, 
+															 stringsAsFactors = FALSE)
+				cor_pairs <- rbind(cor_pairs, cor_pair)
+			}else next
 		}
 		e$cor_pairs <- cor_pairs <- distinct(cor_pairs)
+		write.csv(cor_pairs, "CorrelationPairs.csv", row.names = F)
 		max.cor <- max(cor_pairs[[3]])
 		# max.cor <- check.cor(t(e$tdmm2))
 		message("| The summary of word Frequency: ")
@@ -891,13 +894,20 @@ TMV <- function(){
       e$clustdoc <- TMV.Q(index = 8)
       set.seed(122)
       kmeansResult <- kmeans(dtmm2, centers = e$clustdoc)
+			centers <- kmeansResult$centers
       # round(kmeansResult$centers, digits = 3) # cluster centers
+			segs <- data.frame(matrix(, nrow = 10, ncol = e$clustdoc))
+			for(i in 1:e$clustdoc){
+				segs[[i]] <- colnames(centers)[order(centers[i, ], decreasing = T)[1:10]]
+			}
+			colnames(segs) <- paste("Cluster_", 1:e$clustdoc, sep = "")
+			write.csv(segs, "kmeans_Top10_Impactors.csv", row.names = F)
       write.csv(data.frame(size = kmeansResult$size, kmeansResult$centers), 
                 "kmeans_centers.csv")
-      write.csv(data.frame(document = names(kmeansResult$cluster), 
-                           cluster = kmeansResult$cluster), 
-                "kmeans_cluster.csv", row.names = FALSE)
-      message('| "kmeans_centers.csv" and "kmeans_cluster.csv" are exported. \n')
+      # write.csv(data.frame(document = names(kmeansResult$cluster), 
+      #                      cluster = kmeansResult$cluster), 
+      #           "kmeans_cluster.csv", row.names = FALSE)
+      message('| "kmeans_centers.csv" and "kmeans_top10_impactors.csv" are exported. \n')
       
       message("| The documents clusters and the key words are as following: ")
       for (i in 1:e$clustdoc) {
@@ -943,9 +953,10 @@ TMV <- function(){
       lda <- LDA(dtm2, k = e$topicn) # find 8 topics
       term <- terms(lda, e$termn) # first 4 terms of every topic
       print(term)
+			write.csv(term, "topics.csv", row.names = F)
       write.csv(data.frame(Document = names(topics(lda)), 
                            Topic = topics(lda)), 
-                "document_topics.csv", row.names = FALSE)
+                "document_topics_segment.csv", row.names = FALSE)
       message('\n| "document_topics.csv" is exported. \n')
       # term <- apply(term, MARGIN = 2, paste, collapse = ", ")
       # topic <- topics(lda, 1)
