@@ -358,8 +358,7 @@ circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 								col = add.alpha(brewer.pal(9,"Reds")[3:9][pos], 0.5))
 		
 	}
-	dev.copy(pdf, paste(if(is.null(word)) NULL else paste(word, "_", sep = ""), "CircosPlot.png", sep = ""), 
-					 1000, 1000, units = "px")
+	dev.copy(pdf, paste(if(is.null(word)) NULL else paste(word, "_", sep = ""), "CircosPlot.png", sep = ""), 10, 10)
 	# png(paste(if(is.null(word)) NULL else toupper(word), "CircosPlot.png", sep = ""), 1000, 1000, units = "px")
 	dev.off()
 }
