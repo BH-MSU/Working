@@ -339,10 +339,11 @@ circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 		cor2[i, 1] <- freq2[1:length(topwords),3][freq2[1:length(topwords),1] == cor2[i, 1]]
 		cor2[i, 2] <- freq2[1:length(topwords),3][freq2[1:length(topwords),1] == cor2[i, 2]]
 	}
+	# print(cor2)
 	
 	# STEP 2.3.2
 	# plot
-	for (i in 1:(nrow(cor2) + 1)){
+	for (i in 1:nrow(cor2)){
 		min1 <- min(freq2[freq2[, 3] == cor2[i,1], "freq"] )
 		max1 <- max(freq2[freq2[, 3] == cor2[i,1], "freq"] )
 		min2 <- min(freq2[freq2[, 3] == cor2[i,2], "freq"] )
@@ -351,9 +352,10 @@ circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 		l.limit.2 <- (min2+(min2+max2)/2)/2
 		u.limit.1 <- (max1+(min1+max1)/2)/2
 		u.limit.2 <- (max2+(min2+max2)/2)/2
+		pos <- round((nrow(cor2)-i)/nrow(cor2)*6 + 1, 0)
 		circos.link(cor2[i, 1], c(l.limit.1, u.limit.1), 
 								cor2[i, 2], c(l.limit.2, u.limit.2),
-								col = add.alpha(brewer.pal(9,"Reds")[3:9][round((nrow(cor2)-i)/nrow(cor2)*7, 0)], 0.5))
+								col = add.alpha(brewer.pal(9,"Reds")[3:9][pos], 0.5))
 		
 	}
 	
@@ -757,7 +759,7 @@ TMV <- function(){
 		cat("| Per below you could find a circos plot of top20 words and their association.\n")
 		repeat{
 			repeat{
-				min.assc <- readline("| Please enter to minimum correlation rate you want to check: ")
+				min.assc <- readline("| Please enter the minimum correlation rate you want to check: ")
 				if(!all(strsplit(min.assc, split = "")[[1]] %in% c(as.character(0:9),"."))) {
 					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
 				}else if(as.numeric(min.assc) >= 1 |as.numeric(min.assc) <= 0){
