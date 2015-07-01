@@ -359,7 +359,7 @@ circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 		
 	}
 	dev.copy(pdf, paste(if(is.null(word)) NULL else paste(word, "_", sep = ""), "CircosPlot.pdf", sep = ""), 10, 10)
-	# png(paste(if(is.null(word)) NULL else toupper(word), "CircosPlot.png", sep = ""), 1000, 1000, units = "px")
+	# png(paste(if(is.null(word)) NULL else toupper(word), "CircosPlot.pdf", sep = ""), 1000, 1000, units = "px")
 	dev.off()
 }
 
@@ -773,7 +773,7 @@ TMV <- function(){
 			
 			circos.plot(as.data.frame(t(e$tdmm2)), e$cor_pairs, min.assc)
 			message('| Please look to the plot zone for the Circos Plot. ')
-			message('| "CircosPlot.png" is exported. \n')
+			message('| "CircosPlot.pdf" is exported. \n')
 			opt <- TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
