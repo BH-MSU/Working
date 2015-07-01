@@ -342,7 +342,7 @@ circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 	
 	# STEP 2.3.2
 	# plot
-	for (i in 1:nrow(cor2)){
+	for (i in 1:(nrow(cor2) + 1)){
 		min1 <- min(freq2[freq2[, 3] == cor2[i,1], "freq"] )
 		max1 <- max(freq2[freq2[, 3] == cor2[i,1], "freq"] )
 		min2 <- min(freq2[freq2[, 3] == cor2[i,2], "freq"] )
@@ -788,8 +788,8 @@ TMV <- function(){
 			e$min.freqa <- ans5_3[1]
 			e$corth <- ans5_3[2]
 			
-			attrs <- list(node = list(shape = "ellipse", fixedsize = FALSE,
-																style = "invis", fontcolor = "white", fillcolor = "orange"),
+			attrs <- list(node = list(shape = "rectangle", fixedsize = FALSE,
+																style = "invis", fontcolor = "black", fillcolor = "orange"),
 										edge = list(dir = "both", color = "grey", weight = 1.2)) 
 			plot(e$tdm2,
 			     terms = findFreqTerms(e$tdm2, lowfreq = e$min.freqa),
@@ -828,8 +828,8 @@ TMV <- function(){
 		    print(word_cor[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor)), ])
 		    cat("\n")
 		    plot(e$tdm2,
-		         terms = rownames(word_cor)[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor))],
-		         corThreshold = 0.01,
+		         terms = c(word, rownames(word_cor)[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor))]),
+		         corThreshold = 0,
 		         attrs = attrs, 
 		         weighting = TRUE)
 				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 9, 9)
