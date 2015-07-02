@@ -376,19 +376,21 @@ req.pcg <- function(pcg){
     install.packages(cntm, 
                      repos = "http://R-Forge.R-project.org", 
                      type = "source")
-  }else if(sum(tbinst == "Rgraphviz")>0){
+  }
+	if(sum(tbinst == "Rgraphviz")>0){
     source("http://bioconductor.org/biocLite.R")
     biocLite("Rgraphviz")
-  }else if (length(tbinst)){
-    install.packages(tbinst, dependencies = T)  
+  }
+	if (length(!tbinst %in% c("tmcn", "Rwordseg", "Rweibo", "Rgraphviz"))){
+    install.packages(tbinst[!tbinst %in% c("tmcn", "Rwordseg", "Rweibo", "Rgraphviz")], dependencies = T)  
   } 
   sapply(pcg, require, warn.conflicts = FALSE, character.only = TRUE, quietly = TRUE)  
 }
 
 all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph", "gridExtra",
-             "Rweibo", "Rwordseg", "rJava", "RWeka", "ggdendro", "topicmodels", 
-             "circlize", "GISTools")
+             "topicmodels",  "circlize", "GISTools") 
+						 # "Rweibo", "Rwordseg", "rJava", "ggdendro", "tmcn", "RWeka"
 # rJava is needed for installing and requiring Rwordseg
 req.pcg(all.pcg)
 
