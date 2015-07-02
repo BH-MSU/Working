@@ -749,6 +749,7 @@ TMV <- function(){
 		}
 		e$cor_pairs <- cor_pairs <- distinct(cor_pairs)
 		write.csv(cor_pairs, "CorrelationPairs.csv", row.names = F)
+		message('| "CorrelationPairs.csv" is exported. \n')
 		max.cor <- max(cor_pairs[[3]])
 		# max.cor <- check.cor(t(e$tdmm2))
 		message("| The summary of word Frequency: ")
