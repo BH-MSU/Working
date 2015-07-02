@@ -800,7 +800,7 @@ TMV <- function(){
 			     corThreshold = e$corth,
 			     attrs = attrs, 
 			     weighting = TRUE)
-			dev.copy(pdf, "AssociationPlot.pdf", 9, 9)
+			dev.copy(pdf, "AssociationPlot.pdf", 15, 10)
 			dev.off()
 			message('| Please look to the plot zone for the Association Plot. ')
 			message('| "AssociationPlot.pdf" is exported. \n')
@@ -836,7 +836,7 @@ TMV <- function(){
 		         corThreshold = 0,
 		         attrs = attrs, 
 		         weighting = TRUE)
-				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 9, 9)
+				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 15, 10)
 				dev.off()
 		    message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
 				message(paste('| "',word, '_AssociationPlot.pdf" is exported. \n', sep = ""))
