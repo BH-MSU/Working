@@ -389,8 +389,8 @@ req.pcg <- function(pcg){
 
 all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph", "gridExtra",
-             "topicmodels",  "circlize", "GISTools") 
-						 # "Rweibo", "Rwordseg", "rJava", "ggdendro", "tmcn", "RWeka"
+             "topicmodels",  "circlize", "GISTools", "Rgraphviz") 
+						 # "Rweibo", "Rwordseg", "rJava", "tmcn", "RWeka", "ggdendro"
 # rJava is needed for installing and requiring Rwordseg
 req.pcg(all.pcg)
 
