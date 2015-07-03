@@ -1,7 +1,7 @@
 #--------------------------------------#
 # TMV.Q() (THE QUESTION LIST FUNCTION) #
 #--------------------------------------#
-TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
+TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars_range){
   # collection of all questions in TMV program
   # 1. indicating index and bump up corresponding questions
   # 2. determine the validity of the input for each question
@@ -88,22 +88,22 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
     if(toupper(opt) == "Y") {
       return(stops)
       break
-    }
+    } else return(Q4.1())
   }
   
   # Index = 3
   # Question 4.2: Sparsity?
   # Input: sparsity rate
   # Output: e$spars, numeric vector of length 1
-  Q4.2 <- function(){
+  Q4.2 <- function(spars_range = spars_range){
+    message("| Please specify the Sparsity value between ", round(min(spars_range), 4), " and ", round(max(spars_range), 4), " (excl.). ")
     repeat{
-      message("| Please specify the Sparsity value between 0 and 1. ")
       spars <- readline("| Enter a decimal please: ")
       cat("\n")
       if(!all(strsplit(spars, split = "")[[1]] %in% c(as.character(0:9),"."))) {
-        message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
-      }else if(as.numeric(spars) >= 1 |as.numeric(spars) <= 0){
-        message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
+        message("| Please do enter a positive decimal between ", round(min(spars_range), 4), " and ", round(max(spars_range), 4), " (excl.)!\n")
+      }else if(as.numeric(spars) >= max(spars_range) |as.numeric(spars) <= min(spars_range)){
+        message("| Please do enter a positive decimal between ", round(min(spars_range), 4), " and ", round(max(spars_range), 4), " (excl.)!\n")
       }else {
         return(as.numeric(spars)) 
         break
@@ -235,7 +235,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10){
   switch(L_index,
          A = Q1(),
          B = Q4.1(),
-         C = Q4.2(),
+         C = Q4.2(spars_range),
          D = Q5.1(),
          E = Q5.2(),
          G = Q5.3(max.freq, max.cor),
@@ -624,15 +624,53 @@ TMV <- function(){
 	  print(summary(e$freq1))
 	  cat("\n")
 	}
+	
+	# Calculate the Range of Sparsity
+	e$spars_v <- apply(e$tdmm1, 1, function(v) sum(v == 0)/length(v))
   
   # Q2: Sparsity? (big loop) 
   repeat{
     # Question 4.2: Sparsity?
 		# Input: sparsity rate
 		# Output: e$spars, numeric vector of length 1
+		cat(paste("|", paste(rep("*",31), collapse = "")), 
+        "|  SECTION 0. REMOVE SPARSE WORDS",
+        paste("|", paste(rep("*",31), collapse = "")),
+        "", sep = "\n")
     repeat{
-      message("| Sparsity is the parameter which all the following analysis is based on.")
-      e$spars <- TMV.Q(index = 3)
+      message("| Sparsity is the proportion of a word that appears 0 times across all documents. \n")
+			repeat{
+				opt <- readline("| Do you want to see some examples to help understanding (Y/N)? ")
+				if(!toupper(opt) %in% c("Y", "N")){
+					message('| Only "Y" or "N" is acceptable! ')
+				} else if(toupper(opt) == "Y"){
+					cat("| Assume there is a text data contains 10 documents and 5 distinct words. ", 
+					"| Then the structure of the data can be demonstrated as the matrix below. ", 
+					"| Row names are the 5 words, and column names are the 10 documents. ", 
+					"| The numbers indicate how many times a word appears in a document. ", "", sep = "\n")
+					
+					expl <- matrix(sample(0:5, 50, replace = TRUE), byrow = TRUE, nrow = 5, 
+												 dimnames = list(c("blue", "hive", "msu", "excellent", "hardwork"), c(paste("doc_", 1:10, sep = ""))))
+					print(expl)
+					cat("\n")
+					message('| Sparsity of word "blue": Count("blue" == 0)/TotalCount(documents) = ', sum(expl[1, ] == 0)/ncol(expl), '. ')
+					message('| Sparsity of word "hive": Count("hive" == 0)/TotalCount(documents) = ', sum(expl[2, ] == 0)/ncol(expl), '. ')
+					message('| Sparsity of word "msu": Count("msu" == 0)/TotalCount(documents) = ', sum(expl[3, ] == 0)/ncol(expl), '. ')
+					message('| ... ')
+					message('| Sparsity of the whole data: ')
+					message('|   Count(element of the matrix == 0)/TotalCount(elements of the matrix) = ', sum(expl == 0)/50, '. \n')
+					cat("|", paste(rep("*",31), collapse = ""))
+					cat("\n")
+					break
+				} else break
+			}
+			
+			message("| All the following analysis is based on the data which is cleaned up ")
+			message("| by removing the sparse terms according to the sparsity you type in. \n")
+			message("| The summary of sparsity is as follows: ")
+			print(summary(e$spars_v))
+			cat("\n")
+      e$spars <- TMV.Q(index = 3, spars_range = e$spars_v)
       
       e$tdm2 <- removeSparseTerms(e$tdm1, e$spars)
       colnames(e$tdm2) <- as.character(1:ncol(e$tdm2))
