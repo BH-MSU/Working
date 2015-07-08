@@ -96,7 +96,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
   # Input: sparsity rate
   # Output: e$spars, numeric vector of length 1
   Q4.2 <- function(spars_range = spars_range){
-    message("| Please specify the Sparsity value between ", round(min(spars_range), 4), " and ", round(max(spars_range), 4), " (excl.). ")
+    message("| Please specify the Sparsity value between ", round(min(spars_range), 4), " and ", round(max(spars_range), 4), " (excl.). \n")
     repeat{
       spars <- readline("| Enter a decimal please: ")
       cat("\n")
@@ -181,7 +181,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
     repeat{
       no_clust <- readline("| Please specify the number of clusters: ")
       cat("\n")
-      if(!all(strsplit(no_clust, split = "")[[1]] %in% as.character(0:9))) {
+      if(!all(strsplit(no_clust, split = "")[[1]] %in% as.character(0:9)) | no_clust == "") {
         message("| Please do enter a positive integer!\n")
       } else {
         return(as.numeric(no_clust))
@@ -231,6 +231,34 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
     }
   }
   
+	# Index = 11
+	# Question Module: Which module to be used
+	# Input: Number of modules
+	# Output: e$no.module
+	Q.0 <- function(){
+		repeat{
+			cat("| 7 more modules are provided for the corpus analysis: ", 
+					"| ",
+					"|   1. Frequency Plot (Sparsity Removed)",
+					"|   2. Wordcloud",
+					"|   3. General Word Circors & Association Plot",
+					"|   4. Circos & Association Plot on Specified Word",
+					"|   5. Dendrogram on Words",
+					"|   6. K-MEANS Clustering on Documents/Tweets/Comments",
+					"|   7. Topic Modelling", 
+					"| ", 
+					"|   0. I've finished exploring the corpus.", "", sep = "\n")
+			no.module <- readline("| Please enter a module index: ")
+			cat("\n")
+			if (!no.module %in% as.character(0:7)){
+				message("| Only a number between 0 and 7 is acceptable! \n")
+			}else{
+				return(as.numeric(no.module))
+        break
+			}
+		}
+	}
+	
   L_index <- LETTERS[index]
   switch(L_index,
          A = Q1(),
@@ -241,7 +269,8 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
          G = Q5.3(max.freq, max.cor),
          H = Q5.4(),
          I = Q999(), 
-         J = Q6.1(max.topic, max.term))
+         J = Q6.1(max.topic, max.term),
+				 K = Q.0())
 }
 
 #---------------#
@@ -389,7 +418,8 @@ req.pcg <- function(pcg){
 
 all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph", "gridExtra",
-             "topicmodels",  "circlize", "GISTools", "Rgraphviz") 
+             "topicmodels",  "circlize", "GISTools", "Rgraphviz", "stringi", "class",
+						 "foreign", "nnet", "httr") 
 						 # "Rweibo", "Rwordseg", "rJava", "tmcn", "RWeka", "ggdendro"
 # rJava is needed for installing and requiring Rwordseg
 req.pcg(all.pcg)
@@ -400,6 +430,335 @@ req.pcg(all.pcg)
 #--------------------------------
 e <- new.env()
 e$wd_rcv <- getwd()
+
+	#----------------------------#
+	#  SMALL INTERNAL FUNCTIONS  #
+	# saved in new environment e #
+	#----------------------------#
+
+	#------------------#
+	# sparsity example #
+	#------------------#
+	e$spar.example <- function(){
+		repeat{
+				opt <- readline("| Do you want to see some examples to help understanding (Y/N)? ")
+				if(!toupper(opt) %in% c("Y", "N")){
+					message('| Only "Y" or "N" is acceptable! ')
+				} else if(toupper(opt) == "Y"){
+					cat("| Assume there is a text data contains 10 documents and 5 distinct words. ", 
+					"| Then the structure of the data can be demonstrated as the matrix below. ", 
+					"| Row names are the 5 words, and column names are the 10 documents. ", 
+					"| The numbers indicate how many times a word appears in a document. ", "", sep = "\n")
+					
+					expl <- matrix(sample(0:5, 50, replace = TRUE), byrow = TRUE, nrow = 5, 
+												 dimnames = list(c("blue", "hive", "msu", "excellent", "hardwork"), c(paste("doc_", 1:10, sep = ""))))
+					print(expl)
+					cat("\n")
+					message('| Sparsity of word "blue": Count("blue" == 0)/TotalCount(documents) = ', sum(expl[1, ] == 0)/ncol(expl), '. ')
+					message('| Sparsity of word "hive": Count("hive" == 0)/TotalCount(documents) = ', sum(expl[2, ] == 0)/ncol(expl), '. ')
+					message('| Sparsity of word "msu": Count("msu" == 0)/TotalCount(documents) = ', sum(expl[3, ] == 0)/ncol(expl), '. ')
+					message('| ... ')
+					message('| Sparsity of the whole data: ')
+					message('|   Count(element of the matrix == 0)/TotalCount(elements of the matrix) = ', sum(expl == 0)/50, '. \n')
+					cat("|", paste(rep("*",31), collapse = ""))
+					cat("\n")
+					break
+				} else break
+			}
+	}
+
+	e$wordclouds <- function(data = e$wf2){
+		cat(paste("|", paste(rep("*",23), collapse = "")), 
+				"|  SECTION 2. WORD CLOUD",
+				paste("|", paste(rep("*",23), collapse = "")),
+				"",sep = "\n")
+					
+		repeat{
+			# Question 5.2: Minimum frequency for a word to get into the wordcloud
+			# Input: No. of minimum frequency
+			# Output: e$min_freq_wc, numeric vector of length 1
+			e$min.freqc <- TMV.Q(index = 5)
+			
+			set.seed(123)
+			wordcloud(data$word, data$freq, min.freq = e$min.freqc, rot.per = .3, 
+								random.order = FALSE, colors = brewer.pal(6, "Dark2"))
+			dev.copy(png, "WordCloud.png", width = 1000, height = 1000, units = "px")
+			dev.off()
+			message("| ", e$min.freqc, " is set as the minimum frequency for the wordcloud.\n")
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+	}
+
+	e$freq.plot <- function(data = e$wf2, top_freq = e$ncol_freq, new_freq = e$freq0, chart1 = e$p1){
+		cat(paste("|", paste(rep("*",27), collapse = "")), 
+				"|  SECTION 1. FREQUENCY PLOT",
+				paste("|", paste(rep("*",27), collapse = "")),
+				"", sep = "\n")
+		repeat{
+			# Question 5: a series of questions for visualization parameters in different plot
+			# Question 5.1: No. of columns (no. of top words) in word frequency plot
+			# Input: No. of columns
+			# Output: e$ncol_freq, numeric vector of length 1
+			e$ncol_freq <- TMV.Q(index = 4)
+			
+			p2 <- ggplot(data[1:top_freq, ], aes(word, freq))          						   				+
+				geom_bar(stat = "identity", fill = "orange")                  	 						  +
+				ggtitle(paste("Word Frequency - Top", top_freq))           						    		+
+				ylab("Frequency")                             						    								+
+				xlab("Word")																																	+
+				#geom_hline(aes(yintercept = mean(new_freq)), colour = "red")									+
+				#annotate("text", top_freq, mean(new_freq)+1, size = 3,
+				#				 label = paste("Mean =", round(mean(new_freq), 2)))										+
+				theme(panel.background = element_rect(fill = "transparent",colour = NA),
+							plot.background = element_rect(fill = "transparent",colour = NA),
+							panel.grid.minor = element_blank(), 
+							panel.grid.major = element_blank(),
+							plot.title = element_text(size = 20, family = "Impact"))								+
+				coord_flip()     
+			e$p2 <- p2
+			grid.arrange(chart1, e$p2, ncol = 2)
+			ggsave(paste("p2_top", top_freq, "_word_freq.png", sep = ""), 
+						 e$p2, width = 8, height = 12, 
+						 units = "in", bg = "transparent")
+			
+			message("| Please check the Words Frequency Plot at the plot zone.\n")
+			
+			# index = 9: always satisfactory question
+			opt <- TMV.Q(index = 9)
+			
+			if(toupper(opt) == "Y") {
+				e$min.freqh <- data$freq[top_freq]
+				message("| The chart of Top ", top_freq, " word frequency is plotted, ")
+				message("| in which the minimum frequency equals to ", e$min.freqh, ". \n")
+				break
+			}
+		}
+	}
+	
+	e$general.assoc <- function(new_freq = e$freq2, tdm = e$tdm2, tdmm = e$tdmm2, cor_pairs = e$cor_pairs){
+		cat(paste("|", paste(rep("*",46), collapse = "")), 
+				"|  SECTION 3. GENERAL CIRCOS & ASSOCIATION PLOT",
+				paste("|", paste(rep("*",46), collapse = "")),
+				"", sep = "\n")
+				
+		max.freq <- max(new_freq)
+		max.cor <- max(cor_pairs[[3]])
+		# max.cor <- check.cor(t(e$tdmm2))
+		message("| The summary of word Frequency: ")
+		print(summary(new_freq))
+		message("\n| The summary of word Association: ")
+		print(summary(cor_pairs[[3]]))
+		cat("\n")
+			
+		cat("| Per below you could find a circos plot of top20 words and their association.\n")
+		repeat{
+			repeat{
+				min.assc <- readline("| Please enter the minimum correlation rate you want to check: ")
+				if(!all(strsplit(min.assc, split = "")[[1]] %in% c(as.character(0:9),"."))) {
+					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
+				}else if(as.numeric(min.assc) >= 1 |as.numeric(min.assc) <= 0){
+					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
+				}else {
+					min.assc <- as.numeric(min.assc)
+					break
+				}
+			}
+			
+			circos.plot(as.data.frame(t(tdmm)), e$cor_pairs, min.assc)
+			message('| Please look to the plot zone for the Circos Plot. ')
+			message('| "CircosPlot.pdf" is exported. \n')
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+			
+		readline("| You could find more detailed stats and graphs in the following plot.\n| Press <Enter> to continue...\n")	
+		
+		repeat{
+			# Question 5.3: Minimum frequency for a word to get into the association plot
+			# Input: 1. min frequency for a variable to get into the association plot
+			# 			 2. min collection for a variable to get into the association plot
+			# Output: e$low_freq, numeric vector of length 1; e$cor_thres, numeric vector of length 1
+			# Parameters: 1. max.freq: maximum frequency of a word in the dtm
+			#							2. max.cor: maximum correlation between words in the dtm
+			ans5_3 <- TMV.Q(index = 7, max.freq = max.freq, max.cor = max.cor)
+			e$min.freqa <- ans5_3[1]
+			e$corth <- ans5_3[2]
+			
+			attrs <- list(node = list(shape = "rectangle", fixedsize = FALSE,
+																style = "invis", fontcolor = "black", fillcolor = "orange"),
+										edge = list(dir = "both", color = "grey", weight = 1.2)) 
+			plot(e$tdm2,
+					 terms = findFreqTerms(e$tdm2, lowfreq = e$min.freqa),
+					 corThreshold = e$corth,
+					 attrs = attrs, 
+					 weighting = TRUE)
+			dev.copy(pdf, "AssociationPlot.pdf", 15, 10)
+			dev.off()
+			message('| Please look to the plot zone for the Association Plot. ')
+			message('| "AssociationPlot.pdf" is exported. \n')
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+	}
+
+	e$word.circos <- function(tdm = e$tdm2, tdmm = e$tdmm2, cor_pairs = e$cor_pairs){
+		cat(paste("|", paste(rep("*",59), collapse = "")), 
+				"|  SECTION 4. CIRCOS & ASSOCIATION PLOT FOR SPECIFIED WORD",
+				paste("|", paste(rep("*",59), collapse = "")),
+				"", sep = "\n")
+		
+		repeat{
+			message('| You can specify a single word to see its relationship with others. ')
+			message('| Be sure the word you specified is in the word list below: ')
+			print(unique(cor_pairs[[1]]))
+			cat("\n")
+			opt <- readline('| Please specify the word you are interested in: ')
+			if(!tolower(opt) %in% unique(cor_pairs[[1]])){
+				message("| The word you specified doesn't exist in the current data! ")
+			} else {
+				word <- tolower(opt)
+				word_cor <- findAssocs(tdm, word, corlimit = 0)
+				if (class(word_cor) == "list"){
+					word_cor <- matrix(word_cor[[1]], ncol = 1, dimnames = list(names(word_cor[[1]]), word))
+				}
+
+				e$cor_pairs2 <- data.frame(Word1 = word, 
+																	 Word2 = rownames(word_cor), 
+																	 Assocs = word_cor[, 1], 
+																	 row.names = NULL, 
+																	 stringsAsFactors = FALSE)
+				circos.plot(as.data.frame(t(tdmm)), e$cor_pairs2, 0, word)
+				
+				readline("| Press <Enter> to check the next plot...")
+				
+				message("| Following are the Correlated Words and their Associations. ")
+				print(word_cor[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor)), ])
+				cat("\n")
+				
+				attrs <- list(node = list(shape = "rectangle", fixedsize = FALSE,
+																style = "invis", fontcolor = "black", fillcolor = "orange"),
+										edge = list(dir = "both", color = "grey", weight = 1.2)) 
+										
+				plot(tdm,
+						 terms = c(word, rownames(word_cor)[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor))]),
+						 corThreshold = 0,
+						 attrs = attrs, 
+						 weighting = TRUE)
+				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 15, 10)
+				dev.off()
+				message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
+				message(paste('| "',word, '_AssociationPlot.pdf" is exported. \n', sep = ""))
+				opt <- TMV.Q(index = 9)
+				if(toupper(opt) == "Y") break
+			}
+		}
+	}
+
+	e$dendrogram <- function(tdmm = e$tdmm2){
+		cat(paste("|", paste(rep("*",37), collapse = "")), 
+				"|  SECTION 5. TERMS CLUSTER DENDROGRAM",
+				paste("|", paste(rep("*",37), collapse = "")),
+				"",sep = "\n")
+		DistMat <- dist(scale(tdmm))
+		fit <- hclust(DistMat, method = "ward.D") 
+		# method = "ward.D", "ward.D2", "single", "complete", "average"...
+		repeat{
+			plot(fit)
+			dev.copy(png, "dendrogram.png", width = 1000, height = 1000, units = "px")
+			dev.off()
+			# ggdendrogram(dendro_data(fit))
+			
+			# 4.1 rect.hclust: k?
+			# cut tree into k clusters
+		
+			# Question 5.4: No. of Clusters
+			# Input: No. of clusters
+			# Output: e$no.clust, numeric vector of length 1
+			clustterm <- TMV.Q(index = 8)
+			message("| The main ", clustterm, " clusters are plotted in red rectangles.")
+			rect.hclust(fit, k = clustterm)
+			dev.copy(png, "rect.dendrogram.png", width = 1000, height = 1000, units = "px")
+			dev.off()
+			# rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
+			#             border = 2, cluster = NULL)
+			
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+	}
+
+	e$kmeansclust <- function(tdmm = e$tdmm2){
+		cat(paste("|", paste(rep("*",31), collapse = "")), 
+				"|  SECTION 6. K-MEANS CLUSTERING",
+				paste("|", paste(rep("*",31), collapse = "")),
+				"",sep = "\n")
+		repeat{
+			dtmm2 <- t(tdmm)
+			e$clustdoc <- TMV.Q(index = 8)
+			set.seed(122)
+			kmeansResult <- kmeans(dtmm2, centers = e$clustdoc)
+			centers <- kmeansResult$centers
+			# round(kmeansResult$centers, digits = 3) # cluster centers
+			segs <- data.frame(matrix(, nrow = 10, ncol = e$clustdoc))
+			for(i in 1:e$clustdoc){
+				segs[[i]] <- colnames(centers)[order(centers[i, ], decreasing = T)[1:10]]
+			}
+			colnames(segs) <- paste("Cluster_", 1:e$clustdoc, sep = "")
+			write.csv(segs, "kmeans_Top10_Impactors.csv", row.names = F)
+			write.csv(data.frame(size = kmeansResult$size, kmeansResult$centers), 
+								"kmeans_centers.csv")
+			# write.csv(data.frame(document = names(kmeansResult$cluster), 
+			#                      cluster = kmeansResult$cluster), 
+			#           "kmeans_cluster.csv", row.names = FALSE)
+			message('| "kmeans_centers.csv" and "kmeans_top10_impactors.csv" are exported. \n')
+			
+			message("| The documents clusters and the key words are as following: ")
+			for (i in 1:e$clustdoc) {
+				s <- sort(kmeansResult$centers[i, ], decreasing = T)
+				cat(paste("| Cluster ", i, ": ", sep = ""), paste(names(s)[1:5], sep = ", "))
+				cat("\n")
+				# print the tweets of every cluster
+				# print(tweets[which(kmeansResult$cluster==i)])
+			}
+			cat("\n")
+			
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+	}
+
+	e$topics <- function(tdm = e$tdm2){
+		cat(paste("|", paste(rep("*",31), collapse = "")), 
+				"|    SECTION 7. TOPIC MODELING",
+				paste("|", paste(rep("*",31), collapse = "")),
+				"",sep = "\n")
+		dtm2 <- as.DocumentTermMatrix(tdm)
+		dtm2 <- dtm2[-which(rowSums(as.matrix(dtm2))==0), ]
+		repeat{
+			# library(topicmodels)
+			ans6_1 <- TMV.Q(index = 10)
+			e$topicn <- ans6_1[1]
+			e$termn <- ans6_1[2]
+			lda <- LDA(dtm2, k = e$topicn) # find 8 topics
+			term <- terms(lda, e$termn) # first 4 terms of every topic
+			print(term)
+			write.csv(term, "topics.csv", row.names = F)
+			write.csv(data.frame(Document = names(topics(lda)), 
+													 Topic = topics(lda)), 
+								"document_topics_segment.csv", row.names = FALSE)
+			message('\n| "document_topics.csv" is exported. \n')
+			# term <- apply(term, MARGIN = 2, paste, collapse = ", ")
+			# topic <- topics(lda, 1)
+			# topics <- data.frame(date=as.IDate(tweets.df$created), topic)
+			# qplot(date, ..count.., data=topics, geom="density",
+			#       fill=term[topic], position="stack")
+			
+			opt <- TMV.Q(index = 9)
+			if(toupper(opt) == "Y") break
+		}
+	}
+
 
 #------------------------------#
 # PRIMARY FUNCTION (THE FRAME) #
@@ -466,12 +825,12 @@ TMV <- function(){
 	freq0 <- rowSums(e$tdmm0)
 	e$freq0 <- freq0[order(freq0, decreasing = TRUE)]
 	write.csv(data.frame(Stems = names(e$freq0), 
-										 Completions = stemCompletion(names(e$freq0), e$corpus0C, "shortest"), 
-										 Frequency = e$freq0, 
-										 stringsAsFactors = FALSE), 
-					# default method: prevalent, takes the most frequent match as completion
-					# risking of changing some words which don't need heuristic completion of stemming
-					"stemCompletion.csv", row.names = FALSE)
+											 Completions = stemCompletion(names(e$freq0), e$corpus0C, "shortest"), 
+											 Frequency = e$freq0, 
+											 stringsAsFactors = FALSE), 
+						# default method: prevalent, takes the most frequent match as completion
+						# risking of changing some words which don't need heuristic completion of stemming
+						"stemCompletion.csv", row.names = FALSE)
 	repeat{
 	  message('| Some words seem strange after stemmed by R. ')
 	  opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
@@ -566,16 +925,16 @@ TMV <- function(){
 	# windowsFonts(Times=windowsFont("TT Times New Roman"))
 	
 	# plot word frequency with horizontal lines at mean, 1st quartile and 3rd quartile
-  p1 <- ggplot(e$wf0[1:40,], aes(word, freq))          						   						+
+  p1 <- ggplot(e$wf0[1:40,], aes(word, freq))          						   							+
     geom_bar(stat = "identity", fill = "orange")                  	 						  +
-    ggtitle("Word Frequency - Top 40")           						    								+
+    ggtitle("Word Frequency - Top 40")           						    									+
     ylab("Frequency")                             						    								+
     xlab("Word")																																	+
-		geom_hline(aes(yintercept = mean(e$freq0)), colour = "red")										+
-		# geom_hline(aes(yintercept = summary(e$freq0)[[2]]), colour = "grey")					+
-		# geom_hline(aes(yintercept = summary(e$freq0)[[5]]), colour = "grey")					+
-		annotate("text", 40, mean(e$freq0)+1, size = 3,
-						 label = paste("Mean =", round(mean(e$freq0), 2)))														+
+		#geom_hline(aes(yintercept = mean(e$freq0)), colour = "red")									+
+		# geom_hline(aes(yintercept = summary(e$freq0)[[2]]), colour = "grey")				+
+		# geom_hline(aes(yintercept = summary(e$freq0)[[5]]), colour = "grey")				+
+		#annotate("text", 40, mean(e$freq0)+1, size = 3,
+		#				 label = paste("Mean =", round(mean(e$freq0), 2)))										+
 		# annotate("text", 20.8, summary(e$freq0)[[2]]+1, size = 3,
 		# 				 label = paste("1st Quartile:", summary(e$freq0)[[2]]))							+
 		# annotate("text", 20.8, summary(e$freq0)[[5]]+1, size = 3,
@@ -597,9 +956,9 @@ TMV <- function(){
   # STEP 4  Deeper Analysis Preparation
   # warning: e.g. blue oral -> blueoral
   message("| TMV only provides the analytic results for single words. ")
-  message('| If you have phrases like "new world" which you would ')
-  message('| like to treat them as one word for analysing, please ')
-  message('| replace them by "newworld" in data source and restart the program. \n')
+  message('| If you have phrases like "new world" which you would like to')
+  message('| treat them as one word for analysis, please replace them by "newworld"')
+  message('| in the data source and restart the program. \n')
   
 	# Question 4.1: Add Additional Stopwords
 	# input: N - do not add stopwords, c("word1", "word2", ...) - a string of stopwords
@@ -620,7 +979,7 @@ TMV <- function(){
 	  e$freq1 <- freq1[order(freq1, decreasing = TRUE)]
 	  message("| The data contains ", ncol(e$tdm1), " pieces of text(document),")
 	  message("| including ", nrow(e$tdm1), " unique words. \n")
-	  message("| The statistical summary of words frequency is as follows: ")
+	  message("| The statistical summary of words frequency is as follow: ")
 	  print(summary(e$freq1))
 	  cat("\n")
 	}
@@ -633,37 +992,13 @@ TMV <- function(){
     # Question 4.2: Sparsity?
 		# Input: sparsity rate
 		# Output: e$spars, numeric vector of length 1
-		cat(paste("|", paste(rep("*",31), collapse = "")), 
+		cat(paste("|", paste(rep("*",32), collapse = "")), 
         "|  SECTION 0. REMOVE SPARSE WORDS",
-        paste("|", paste(rep("*",31), collapse = "")),
+        paste("|", paste(rep("*",32), collapse = "")),
         "", sep = "\n")
     repeat{
       message("| Sparsity is the proportion of a word that appears 0 times across all documents. \n")
-			repeat{
-				opt <- readline("| Do you want to see some examples to help understanding (Y/N)? ")
-				if(!toupper(opt) %in% c("Y", "N")){
-					message('| Only "Y" or "N" is acceptable! ')
-				} else if(toupper(opt) == "Y"){
-					cat("| Assume there is a text data contains 10 documents and 5 distinct words. ", 
-					"| Then the structure of the data can be demonstrated as the matrix below. ", 
-					"| Row names are the 5 words, and column names are the 10 documents. ", 
-					"| The numbers indicate how many times a word appears in a document. ", "", sep = "\n")
-					
-					expl <- matrix(sample(0:5, 50, replace = TRUE), byrow = TRUE, nrow = 5, 
-												 dimnames = list(c("blue", "hive", "msu", "excellent", "hardwork"), c(paste("doc_", 1:10, sep = ""))))
-					print(expl)
-					cat("\n")
-					message('| Sparsity of word "blue": Count("blue" == 0)/TotalCount(documents) = ', sum(expl[1, ] == 0)/ncol(expl), '. ')
-					message('| Sparsity of word "hive": Count("hive" == 0)/TotalCount(documents) = ', sum(expl[2, ] == 0)/ncol(expl), '. ')
-					message('| Sparsity of word "msu": Count("msu" == 0)/TotalCount(documents) = ', sum(expl[3, ] == 0)/ncol(expl), '. ')
-					message('| ... ')
-					message('| Sparsity of the whole data: ')
-					message('|   Count(element of the matrix == 0)/TotalCount(elements of the matrix) = ', sum(expl == 0)/50, '. \n')
-					cat("|", paste(rep("*",31), collapse = ""))
-					cat("\n")
-					break
-				} else break
-			}
+			e$spar.example()
 			
 			message("| All the following analysis is based on the data which is cleaned up ")
 			message("| by removing the sparse terms according to the sparsity you type in. \n")
@@ -694,315 +1029,69 @@ TMV <- function(){
       if(toupper(opt) == "Y") break
     }
     
-		#--------------------------------------------------------------------------------
-    # STEP 5 Visualization
-    # remarks: small loops, ask preferred parameters for plots, 
-    #          if satisfied, save useful objects for final output
-    
-		# 1. Frequency Plot: ncol_freq?
-    cat(paste("|", paste(rep("*",27), collapse = "")), 
-        "|  SECTION 1. FREQUENCY PLOT",
-        paste("|", paste(rep("*",27), collapse = "")),
-        "", sep = "\n")
-    
-    repeat{
-      # Question 5: a series of questions for visualization parameters in different plot
-			# Question 5.1: No. of columns (no. of top words) in word frequency plot
-			# Input: No. of columns
-			# Output: e$ncol_freq, numeric vector of length 1
-			e$ncol_freq <- TMV.Q(index = 4)
-			
-      p2 <- ggplot(e$wf2[1:e$ncol_freq, ], aes(word, freq))          						   		+
-				geom_bar(stat = "identity", fill = "orange")                  	 						  +
-				ggtitle(paste("Word Frequency - Top", e$ncol_freq))           						    	+
-				ylab("Frequency")                             						    								+
-				xlab("Word")																																	+
-        geom_hline(aes(yintercept = mean(e$freq2)), colour = "red")										+
-        annotate("text", e$ncol_freq, mean(e$freq2)+1, size = 3,
-                 label = paste("Mean =", round(mean(e$freq2), 2)))														+
-        theme(panel.background = element_rect(fill = "transparent",colour = NA),
-							plot.background = element_rect(fill = "transparent",colour = NA),
-							panel.grid.minor = element_blank(), 
-							panel.grid.major = element_blank(),
-							plot.title = element_text(size = 20, family = "Impact"))								+
-				coord_flip()     
-			e$p2 <- p2
-			grid.arrange(e$p1, e$p2, ncol = 2)
-			ggsave(paste("p2_top", e$ncol_freq, "_word_freq.png", sep = ""), 
-			       e$p2, width = 8, height = 12, 
-			       units = "in", bg = "transparent")
-			
-			message("| Please check the Words Frequency Plot at the plot zone.\n")
-			
-			# index = 9: always satisfactory question
-      opt <- TMV.Q(index = 9)
-			
-      if(toupper(opt) == "Y") {
-        e$min.freqh <- e$wf2$freq[e$ncol_freq]
-        message("| The chart of Top ", e$ncol_freq, " word frequency is plotted, ")
-        message("| in which the minimum frequency equals to ", e$min.freqh, ". \n")
-        break
-      }
-    }
-    
-    # 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
-    cat(paste("|", paste(rep("*",23), collapse = "")), 
-        "|  SECTION 2. WORD CLOUD",
-        paste("|", paste(rep("*",23), collapse = "")),
-        "",sep = "\n")
-    
-    repeat{
-			# Question 5.2: Minimum frequency for a word to get into the wordcloud
-			# Input: No. of minimum frequency
-			# Output: e$min_freq_wc, numeric vector of length 1
-      e$min.freqc <- TMV.Q(index = 5)
-			
-      set.seed(123)
-      wordcloud(e$wf2$word, e$wf2$freq, min.freq = e$min.freqc, rot.per = .3, 
-                random.order = FALSE, colors = brewer.pal(6, "Dark2"))
-      dev.copy(png, "WordCloud.png", width = 1000, height = 1000, units = "px")
-      dev.off()
-      message("| ", e$min.freqc, " is set as the minimum frequency for the wordcloud.\n")
-      opt <- TMV.Q(index = 9)
-      if(toupper(opt) == "Y") break
-    }
-    
-    # 3. Association Plot(output: pdf): lowfreq? corThreshold? 
-    #    Correlation output .csv
-    cat(paste("|", paste(rep("*",29), collapse = "")), 
-        "|  SECTION 3. ASSOCIATION PLOT",
-        paste("|", paste(rep("*",29), collapse = "")),
-        "", sep = "\n")
-    
-		max.freq <- max(e$freq2)
 		cor_pairs <- data.frame()
 		for(i in 1:length(e$freq2)){
-		  cor1 <- findAssocs(e$tdm2, names(e$freq2)[i], corlimit = 0)
-			if (class(cor1)=="matrix"){
+			cor1 <- findAssocs(e$tdm2, names(e$freq2)[i], corlimit = 0)
+			if (class(cor1) == "matrix"){
+				if(nrow(cor1) == 0) next
 				cor_pair <- data.frame(Word1 = names(e$freq2)[i], 
 															 Word2 = rownames(cor1), 
 															 Assocs = cor1[, 1], 
 															 row.names = NULL, 
 															 stringsAsFactors = FALSE)
 				cor_pairs <- rbind(cor_pairs, cor_pair)
+			}else if(class(cor1) == "list"){
+				if(length(cor1[[1]]) == 0) next
+				cor_pair <- data.frame(Word1 = names(e$freq2)[i], 
+															 Word2 = names(cor1[[1]]), 
+															 Assocs = cor1[[1]], 
+															 row.names = NULL, 
+															 stringsAsFactors = FALSE)
+				cor_pairs <- rbind(cor_pairs, cor_pair)
 			}else next
 		}
-		e$cor_pairs <- cor_pairs <- distinct(cor_pairs)
+		e$cor_pairs <- cor_pairs <- distinct(cor_pairs)	
 		write.csv(cor_pairs, "CorrelationPairs.csv", row.names = F)
 		message('| "CorrelationPairs.csv" is exported. \n')
-		max.cor <- max(cor_pairs[[3]])
-		# max.cor <- check.cor(t(e$tdmm2))
-		message("| The summary of word Frequency: ")
-		print(summary(e$freq2))
-		message("\n| The summary of word Association: ")
-		print(summary(cor_pairs[[3]]))
-		cat("\n")
 		
-		cat("| Per below you could find a circos plot of top20 words and their association.\n")
+		#--------------------------------------------------------------------------------
+    # STEP 5 Visualization & Clustering...
+    # remarks: small loops, ask preferred parameters for plots, 
+    #          if satisfied, save useful objects for final output
 		repeat{
-			repeat{
-				min.assc <- readline("| Please enter the minimum correlation rate you want to check: ")
-				if(!all(strsplit(min.assc, split = "")[[1]] %in% c(as.character(0:9),"."))) {
-					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
-				}else if(as.numeric(min.assc) >= 1 |as.numeric(min.assc) <= 0){
-					message("| Please do enter a positive decimal between 0 and 1 (excl.)!\n")
-				}else {
-					min.assc <- as.numeric(min.assc)
-					break
-				}
-			}
-			
-			circos.plot(as.data.frame(t(e$tdmm2)), e$cor_pairs, min.assc)
-			message('| Please look to the plot zone for the Circos Plot. ')
-			message('| "CircosPlot.pdf" is exported. \n')
-			opt <- TMV.Q(index = 9)
-			if(toupper(opt) == "Y") break
-		}
-		
-		readline("| You could find more detailed stats and graphs in the following steps.\n| Press <Enter> to continue...\n")
-		
-		repeat{
-			# Question 5.3: Minimum frequency for a word to get into the association plot
-			# Input: 1. min frequency for a variable to get into the association plot
-			# 			 2. min collection for a variable to get into the association plot
-			# Output: e$low_freq, numeric vector of length 1; e$cor_thres, numeric vector of length 1
-			# Parameters: 1. max.freq: maximum frequency of a word in the dtm
-			#							2. max.cor: maximum correlation between words in the dtm
-			ans5_3 <- TMV.Q(index = 7, max.freq = max.freq, max.cor = max.cor)
-			e$min.freqa <- ans5_3[1]
-			e$corth <- ans5_3[2]
-			
-			attrs <- list(node = list(shape = "rectangle", fixedsize = FALSE,
-																style = "invis", fontcolor = "black", fillcolor = "orange"),
-										edge = list(dir = "both", color = "grey", weight = 1.2)) 
-			plot(e$tdm2,
-			     terms = findFreqTerms(e$tdm2, lowfreq = e$min.freqa),
-			     corThreshold = e$corth,
-			     attrs = attrs, 
-			     weighting = TRUE)
-			dev.copy(pdf, "AssociationPlot.pdf", 15, 10)
-			dev.off()
-			message('| Please look to the plot zone for the Association Plot. ')
-			message('| "AssociationPlot.pdf" is exported. \n')
-			opt <- TMV.Q(index = 9)
-			if(toupper(opt) == "Y") break
-		}
-		
-		repeat{
-		  message('| You can specify a single word to see its relationship with others. ')
-		  message('| Be sure the word you specified is in the following word list: ')
-		  print(unique(e$cor_pairs[[1]]))
-		  cat("\n")
-		  opt <- readline('| Please specify the word you are interested in: ')
-		  if(!tolower(opt) %in% unique(e$cor_pairs[[1]])){
-		    message("| The word you specified doesn't exist in the current data! ")
-		  } else {
-		    word <- tolower(opt)
-		    word_cor <- findAssocs(e$tdm2, word, corlimit = 0)
-				e$cor_pairs2 <- data.frame(Word1 = word, 
-																	 Word2 = rownames(word_cor), 
-																	 Assocs = word_cor[, 1], 
-																	 row.names = NULL, 
-																	 stringsAsFactors = FALSE)
-				circos.plot(as.data.frame(t(e$tdmm2)), e$cor_pairs2, 0, word)
+			opt <- TMV.Q(index = 11)
+			if(opt == 0){
+				break
+			}else if(opt == 1){
+				# 1. Frequency Plot: ncol_freq?
+				# Question 5: a series of questions for visualization parameters in different plot
+				# Question 5.1: No. of columns (no. of top words) in word frequency plot
+				# Input: No. of columns
+				# Output: e$ncol_freq, numeric vector of length 1
 				
-				readline("| Press <Enter> to check the next plot...")
-				
-		    message("| Following are the Correlated Words and their Associations. ")
-		    print(word_cor[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor)), ])
-		    cat("\n")
-		    plot(e$tdm2,
-		         terms = c(word, rownames(word_cor)[1:(if(nrow(word_cor) > 20) 20 else nrow(word_cor))]),
-		         corThreshold = 0,
-		         attrs = attrs, 
-		         weighting = TRUE)
-				dev.copy(pdf, paste(word, "AssociationPlot.pdf", sep = "_"), 15, 10)
-				dev.off()
-		    message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
-				message(paste('| "',word, '_AssociationPlot.pdf" is exported. \n', sep = ""))
-		    opt <- TMV.Q(index = 9)
-		    if(toupper(opt) == "Y") break
-		  }
-		}
-		# readline("| The single word association plot in circos plot format is also plotted.\n| Press <Enter> to continue...\n")
-		
-    # 4.0 hclust
-    # Cluster Dendrogram:
-		cat(paste("|", paste(rep("*",37), collapse = "")), 
-		    "|  SECTION 4. TERMS CLUSTER DENDROGRAM",
-		    paste("|", paste(rep("*",37), collapse = "")),
-		    "",sep = "\n")
-    DistMat <- dist(scale(e$tdmm2))
-    fit <- hclust(DistMat, method = "ward.D") 
-    # method = "ward.D", "ward.D2", "single", "complete", "average"...
-    repeat{
-      plot(fit)
-      dev.copy(png, "dendrogram.png", width = 1000, height = 1000, units = "px")
-			dev.off()
-      # ggdendrogram(dendro_data(fit))
-      
-      # 4.1 rect.hclust: k?
-      # cut tree into k clusters
-		
-			# Question 5.4: No. of Clusters
-			# Input: No. of clusters
-			# Output: e$no.clust, numeric vector of length 1
-			e$clustterm <- TMV.Q(index = 8)
-			message("| The main ", e$clustterm, " clusters are plotted in red rectangles.")
-			rect.hclust(fit, k = e$clustterm)
-			dev.copy(png, "rect.dendrogram.png", width = 1000, height = 1000, units = "px")
-			dev.off()
-			# rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
-			#             border = 2, cluster = NULL)
-			
-			opt <- TMV.Q(index = 9)
-			if(toupper(opt) == "Y") break
-		}
-		
-    
-    # 5 kmeans: cluster by documents
-    cat(paste("|", paste(rep("*",31), collapse = "")), 
-        "|  SECTION 5. K-MEANS CLUSTERING",
-        paste("|", paste(rep("*",31), collapse = "")),
-        "",sep = "\n")
-    repeat{
-      dtmm2 <- t(e$tdmm2)
-      e$clustdoc <- TMV.Q(index = 8)
-      set.seed(122)
-      kmeansResult <- kmeans(dtmm2, centers = e$clustdoc)
-			centers <- kmeansResult$centers
-      # round(kmeansResult$centers, digits = 3) # cluster centers
-			segs <- data.frame(matrix(, nrow = 10, ncol = e$clustdoc))
-			for(i in 1:e$clustdoc){
-				segs[[i]] <- colnames(centers)[order(centers[i, ], decreasing = T)[1:10]]
+				e$freq.plot(data = e$wf2, top_freq = e$ncol_freq, new_freq = e$freq0, chart1 = e$p1)
+			}else if(opt == 2){
+				# 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
+				e$wordclouds(data = e$wf2)
+			}else if(opt == 3){
+				# 3. Overall Circos & Association Plot(output: pdf): lowfreq? corThreshold? 
+				#    Correlation output .csv
+				e$general.assoc(new_freq = e$freq2, tdm = e$tdm2, tdmm = e$tdmm2, cor_pairs = e$cor_pairs)
+			}else if(opt == 4){
+				# 4. Specified Circos & Association Plot
+				e$word.circos(tdm = e$tdm2, tdmm = e$tdmm2, cor_pairs = e$cor_pairs)
+			}else if(opt == 5){
+				# 5. hclust
+				# Cluster Dendrogram:
+				e$dendrogram(tdmm = e$tdmm2)
+			}else if(opt == 6){
+				# 6. k-means clustering
+				e$kmeansclust(tdmm = e$tdmm2)
+			}else{
+				# 7. topic modelling
+				e$topics(tdm = e$tdm2)
 			}
-			colnames(segs) <- paste("Cluster_", 1:e$clustdoc, sep = "")
-			write.csv(segs, "kmeans_Top10_Impactors.csv", row.names = F)
-      write.csv(data.frame(size = kmeansResult$size, kmeansResult$centers), 
-                "kmeans_centers.csv")
-      # write.csv(data.frame(document = names(kmeansResult$cluster), 
-      #                      cluster = kmeansResult$cluster), 
-      #           "kmeans_cluster.csv", row.names = FALSE)
-      message('| "kmeans_centers.csv" and "kmeans_top10_impactors.csv" are exported. \n')
-      
-      message("| The documents clusters and the key words are as following: ")
-      for (i in 1:e$clustdoc) {
-        s <- sort(kmeansResult$centers[i, ], decreasing = T)
-        cat(paste("| Cluster ", i, ": ", sep = ""), paste(names(s)[1:5], sep = ", "))
-        cat("\n")
-        # print the tweets of every cluster
-        # print(tweets[which(kmeansResult$cluster==i)])
-      }
-      cat("\n")
-      
-      opt <- TMV.Q(index = 9)
-      if(toupper(opt) == "Y") break
-    }
-    
-    # 4.2 clust: automatic k?
-    # library(fpc)
-    # partitioning around medoids with estimation of number of clusters
-    # pamResult <- pamk(dtmm2, metric = "manhattan")
-    # k <- pamResult$nc # number of clusters identified
-    # pamResult <- pamResult$pamobject
-    # print cluster medoids
-    # for (i in 1:k) {
-    # cat("cluster", i, ": ",
-    #     colnames(pamResult$medoids)[which(pamResult$medoids[i,]==1)], "\n")
-    # }
-    # plot clustering result
-    # layout(matrix(c(1, 2), 1, 2)) # set to two graphs per page
-    # plot(pamResult, col.p = pamResult$clustering)
-    
-    # 6 Topic Modeling
-    cat(paste("|", paste(rep("*",31), collapse = "")), 
-        "|    SECTION 6. TOPIC MODELING",
-        paste("|", paste(rep("*",31), collapse = "")),
-        "",sep = "\n")
-    dtm2 <- as.DocumentTermMatrix(e$tdm2)
-    dtm2 <- dtm2[-which(rowSums(as.matrix(dtm2))==0), ]
-    repeat{
-      # library(topicmodels)
-      ans6_1 <- TMV.Q(index = 10)
-      e$topicn <- ans6_1[1]
-      e$termn <- ans6_1[2]
-      lda <- LDA(dtm2, k = e$topicn) # find 8 topics
-      term <- terms(lda, e$termn) # first 4 terms of every topic
-      print(term)
-			write.csv(term, "topics.csv", row.names = F)
-      write.csv(data.frame(Document = names(topics(lda)), 
-                           Topic = topics(lda)), 
-                "document_topics_segment.csv", row.names = FALSE)
-      message('\n| "document_topics.csv" is exported. \n')
-      # term <- apply(term, MARGIN = 2, paste, collapse = ", ")
-      # topic <- topics(lda, 1)
-      # topics <- data.frame(date=as.IDate(tweets.df$created), topic)
-      # qplot(date, ..count.., data=topics, geom="density",
-      #       fill=term[topic], position="stack")
-      
-      opt <- TMV.Q(index = 9)
-      if(toupper(opt) == "Y") break
-    }
+		}
     
     # End Sparsity Big Loop
     repeat{
@@ -1023,22 +1112,3 @@ TMV <- function(){
   setwd(e$wd_rcv)
 }
 
-
-# findAssocs(dtm, "not", corlimit = 0.3)
-
-#------------------------------------
-# Compare Among Several Text Source
-# Word Cloud
-# df <- read.csv("FO_Compare.csv", head = FALSE)
-# df <- read.csv("FO_Compare2.csv", head = FALSE)
-# df <- sapply(df, as.character)
-# df <- df[, -1]
-# sub_cont <- Corpus(DataframeSource(df))
-# tdm6 <- as.matrix(tdm)
-# tdm6 <- tdm6[!rownames(tdm6) %in% c("new", "vehicl"), ]
-# colnames(tdm6) <- c("Drop1", "Drop2", "Increase1", "Increase2", "Same1", "Same2")
-# colnames(tdm6) <- c("Drop2", "Increase2", "Same2")
-# comparison.cloud(tdm6, random.order = F, max.words = Inf, title.size = 1.5)
-# commonality.cloud(tdm6, random.order=FALSE,
-#                    colors = brewer.pal(8, "Dark2"),
-#                    title.size=1.5)
