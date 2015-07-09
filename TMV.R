@@ -1,7 +1,11 @@
+
+e <- new.env()
+e$wd_rcv <- getwd()
+
 #--------------------------------------#
-# TMV.Q() (THE QUESTION LIST FUNCTION) #
+# e$TMV.Q() (THE QUESTION LIST FUNCTION) #
 #--------------------------------------#
-TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars_range){
+e$TMV.Q <- function(index, words, max.freq, max.cor, max.topic = 10, max.term = 10, spars_range){
   # collection of all questions in TMV program
   # 1. indicating index and bump up corresponding questions
   # 2. determine the validity of the input for each question
@@ -44,51 +48,56 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
   # Question 4.1: Add Additional Stopwords
   # input: N - do not add stopwords, c("word1", "word2", ...) - a string of stopwords
   # output: e$stops, character vector, a vector of additional stopwords 
-  Q4.1 <- function(){
+  Q4.1 <- function(words = words){
     repeat{
-      message("| Do you have any Additional Stopwords? ")
-      message("| If none, press <Enter> without typing any letters. ")
-      stps <- readline('| Please specify (use comma "," to split words): ')
-      cat("\n")
-      if(!all(strsplit(tolower(stps), "")[[1]] %in% c(" ", ",", "", letters))){
-        message("| Unacceptable character is entered! Please type again! \n")
-      } else break
-    }
+			repeat{
+				message("| Do you have any Additional Stopwords? ")
+				message("| If none, press <Enter> without typing any letters. ")
+				stps <- readline('| Please specify (use comma "," to split words): ')
+				cat("\n")
+				if(!all(strsplit(tolower(stps), "")[[1]] %in% c(" ", ",", "", letters))){
+					message("| Unacceptable character is entered! Please type again! \n")
+				} else {
+					stops <- strsplit(gsub(" ", "", tolower(stps)), ",")[[1]]
+					if(!all(stops %in% words)) {
+						message("| Some word you specified doesn't exist in the current pool of words! \n")
+					} else break
+				}
+			}
     
-    stops <- strsplit(gsub(" ", "", tolower(stps)), ",")[[1]]
+			if(length(stops) == 0) {
+				message("| You don't need any Additional Stopwords. ")
+			} else {
+				message("| The new stopword(s) that you specified: ")
+				
+				console.width <- getOption("width")
+				print.content <- paste("| ")
+				for (i in 1:length(stops)){
+					print.content <- paste(print.content, stops[i], 
+																 if(i!=length(stops))", ", sep ="")
+					len.content <- nchar(print.content)
+					short.len <- len.content - len.content%/%console.width * console.width
+					if (short.len + nchar(stops[i+1]) + nchar(" ,") > console.width){
+						print.content <- paste(print.content, "\n| ", sep = "")
+					}
+				}
+				message(print.content)
+				cat("\n")
+				# cat(stops, sep = ", ")
+			}
     
-    if(length(stops) == 0) {
-      message("| You don't need any Additional Stopwords. ")
-    } else {
-      message("| The new stopword(s) that you specified: ")
-      
-      console.width <- getOption("width")
-      print.content <- paste("| ")
-      for (i in 1:length(stops)){
-        print.content <- paste(print.content, stops[i], 
-                               if(i!=length(stops))", ", sep ="")
-        len.content <- nchar(print.content)
-        short.len <- len.content - len.content%/%console.width * console.width
-        if (short.len + nchar(stops[i+1]) + nchar(" ,") > console.width){
-          print.content <- paste(print.content, "\n| ", sep = "")
-        }
-      }
-      message(print.content)
-      cat("\n")
-      # cat(stops, sep = ", ")
-    }
-    
-    repeat{
-      opt <- readline("| Could you confirm (Y/N)? ")
-      cat("\n")
-      if(!toupper(opt) %in% c("Y", "N")){
-        message('| Only "Y" or "N" is acceptable! \n')
-      } else break
-    }
-    if(toupper(opt) == "Y") {
-      return(stops)
-      break
-    } else return(Q4.1())
+			repeat{
+				opt <- readline("| Could you confirm (Y/N)? ")
+				cat("\n")
+				if(!toupper(opt) %in% c("Y", "N")){
+					message('| Only "Y" or "N" is acceptable! \n')
+				} else break
+			}
+			if(toupper(opt) == "Y") {
+				return(stops)
+				break
+			}
+		}
   }
   
   # Index = 3
@@ -262,7 +271,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
   L_index <- LETTERS[index]
   switch(L_index,
          A = Q1(),
-         B = Q4.1(),
+         B = Q4.1(words),
          C = Q4.2(spars_range),
          D = Q5.1(),
          E = Q5.2(),
@@ -276,7 +285,7 @@ TMV.Q <- function(index, max.freq, max.cor, max.topic = 10, max.term = 10, spars
 #---------------#
 # circos.plot() #
 #---------------#
-circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
+e$circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 	# dtm: document-term matrix in normal matrix format
 	# pair.cor: correlation data frame with 3 columns:
 	#						1. Word 1, type character
@@ -396,7 +405,7 @@ circos.plot <- function(dtm, pair.cor, min.cor, word = NULL){
 
 #--------------------------------
 # STEP 0 Install necessary packages
-req.pcg <- function(pcg){
+e$req.pcg <- function(pcg){
   # packages to be installed
   tbinst <- pcg[(!(pcg %in% installed.packages()[, "Package"]))|
                   (pcg %in% old.packages()[, "Package"])]  
@@ -416,20 +425,17 @@ req.pcg <- function(pcg){
   sapply(pcg, require, warn.conflicts = FALSE, character.only = TRUE, quietly = TRUE)  
 }
 
-all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
+e$all.pcg <- c("tm", "SnowballC", "qdap", "qdapDictionaries", "dplyr", "fpc", "chron", 
              "RColorBrewer", "ggplot2", "scales", "wordcloud", "igraph", "gridExtra",
              "topicmodels",  "circlize", "GISTools", "Rgraphviz", "stringi", "class",
 						 "foreign", "nnet", "httr") 
 						 # "Rweibo", "Rwordseg", "rJava", "tmcn", "RWeka", "ggdendro"
 # rJava is needed for installing and requiring Rwordseg
-req.pcg(all.pcg)
+e$req.pcg(e$all.pcg)
 
 # ERROR: compilation failed for package 'tmcn'
 # Warning in install.packages : package 'tmcn' is not available (for R version 3.2.0)
-
 #--------------------------------
-e <- new.env()
-e$wd_rcv <- getwd()
 
 	#----------------------------#
 	#  SMALL INTERNAL FUNCTIONS  #
@@ -473,24 +479,29 @@ e$wd_rcv <- getwd()
 				paste("|", paste(rep("*",23), collapse = "")),
 				"",sep = "\n")
 					
+		message("| The summary of word Frequency: ")
+		print(summary(data$freq))
+		cat("\n")
+		
 		repeat{
 			# Question 5.2: Minimum frequency for a word to get into the wordcloud
 			# Input: No. of minimum frequency
 			# Output: e$min_freq_wc, numeric vector of length 1
-			e$min.freqc <- TMV.Q(index = 5)
+			e$min.freqc <- e$TMV.Q(index = 5)
 			
 			set.seed(123)
 			wordcloud(data$word, data$freq, min.freq = e$min.freqc, rot.per = .3, 
+			#					scale = ,
 								random.order = FALSE, colors = brewer.pal(6, "Dark2"))
 			dev.copy(png, "WordCloud.png", width = 1000, height = 1000, units = "px")
 			dev.off()
 			message("| ", e$min.freqc, " is set as the minimum frequency for the wordcloud.\n")
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
 	}
 
-	e$freq.plot <- function(data = e$wf2, top_freq = e$ncol_freq, new_freq = e$freq0, chart1 = e$p1){
+	e$freq.plot <- function(data = e$wf2, chart1 = e$p1){
 		cat(paste("|", paste(rep("*",27), collapse = "")), 
 				"|  SECTION 1. FREQUENCY PLOT",
 				paste("|", paste(rep("*",27), collapse = "")),
@@ -500,36 +511,36 @@ e$wd_rcv <- getwd()
 			# Question 5.1: No. of columns (no. of top words) in word frequency plot
 			# Input: No. of columns
 			# Output: e$ncol_freq, numeric vector of length 1
-			e$ncol_freq <- TMV.Q(index = 4)
+			e$ncol_freq <- e$TMV.Q(index = 4)
 			
-			p2 <- ggplot(data[1:top_freq, ], aes(word, freq))          						   				+
-				geom_bar(stat = "identity", fill = "orange")                  	 						  +
-				ggtitle(paste("Word Frequency - Top", top_freq))           						    		+
-				ylab("Frequency")                             						    								+
-				xlab("Word")																																	+
-				#geom_hline(aes(yintercept = mean(new_freq)), colour = "red")									+
-				#annotate("text", top_freq, mean(new_freq)+1, size = 3,
-				#				 label = paste("Mean =", round(mean(new_freq), 2)))										+
-				theme(panel.background = element_rect(fill = "transparent",colour = NA),
-							plot.background = element_rect(fill = "transparent",colour = NA),
+			p2 <- ggplot(data[1:if(e$ncol_freq > nrow(data)) nrow(data) else e$ncol_freq, ], aes(word, freq))  +
+				geom_bar(stat = "identity", fill = "orange")                  	 						                     +
+				ggtitle(paste("Word Frequency - Top", if(e$ncol_freq > nrow(data)) nrow(data) else e$ncol_freq)) +
+				ylab("Frequency")                             						    								                   +
+				xlab("Word")																																	                   +
+				# geom_hline(aes(yintercept = mean(data$freq)), colour = "red")								                   +
+				# annotate("text", e$ncol_freq, mean(data$freq)+1, size = 3,
+								 # label = paste("Mean =", round(mean(data$freq), 2)))									                 +
+				theme(panel.background = element_rect(fill = "transparent", colour = NA),
+							plot.background = element_rect(fill = "transparent", colour = NA),
 							panel.grid.minor = element_blank(), 
 							panel.grid.major = element_blank(),
-							plot.title = element_text(size = 20, family = "Impact"))								+
+							plot.title = element_text(size = 20, family = "Impact"))								                   +
 				coord_flip()     
 			e$p2 <- p2
 			grid.arrange(chart1, e$p2, ncol = 2)
-			ggsave(paste("p2_top", top_freq, "_word_freq.png", sep = ""), 
+			ggsave(paste("p2_top", e$ncol_freq, "_word_freq.png", sep = ""), 
 						 e$p2, width = 8, height = 12, 
 						 units = "in", bg = "transparent")
 			
 			message("| Please check the Words Frequency Plot at the plot zone.\n")
 			
 			# index = 9: always satisfactory question
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			
 			if(toupper(opt) == "Y") {
-				e$min.freqh <- data$freq[top_freq]
-				message("| The chart of Top ", top_freq, " word frequency is plotted, ")
+				e$min.freqh <- data$freq[e$ncol_freq]
+				message("| The chart of Top ", e$ncol_freq, " word frequency is plotted, ")
 				message("| in which the minimum frequency equals to ", e$min.freqh, ". \n")
 				break
 			}
@@ -565,10 +576,10 @@ e$wd_rcv <- getwd()
 				}
 			}
 			
-			circos.plot(as.data.frame(t(tdmm)), e$cor_pairs, min.assc)
+			e$circos.plot(as.data.frame(t(tdmm)), e$cor_pairs, min.assc)
 			message('| Please look to the plot zone for the Circos Plot. ')
 			message('| "CircosPlot.pdf" is exported. \n')
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
 			
@@ -581,7 +592,7 @@ e$wd_rcv <- getwd()
 			# Output: e$low_freq, numeric vector of length 1; e$cor_thres, numeric vector of length 1
 			# Parameters: 1. max.freq: maximum frequency of a word in the dtm
 			#							2. max.cor: maximum correlation between words in the dtm
-			ans5_3 <- TMV.Q(index = 7, max.freq = max.freq, max.cor = max.cor)
+			ans5_3 <- e$TMV.Q(index = 7, max.freq = max.freq, max.cor = max.cor)
 			e$min.freqa <- ans5_3[1]
 			e$corth <- ans5_3[2]
 			
@@ -597,7 +608,7 @@ e$wd_rcv <- getwd()
 			dev.off()
 			message('| Please look to the plot zone for the Association Plot. ')
 			message('| "AssociationPlot.pdf" is exported. \n')
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
 	}
@@ -628,7 +639,7 @@ e$wd_rcv <- getwd()
 																	 Assocs = word_cor[, 1], 
 																	 row.names = NULL, 
 																	 stringsAsFactors = FALSE)
-				circos.plot(as.data.frame(t(tdmm)), e$cor_pairs2, 0, word)
+				e$circos.plot(as.data.frame(t(tdmm)), e$cor_pairs2, 0, word)
 				
 				readline("| Press <Enter> to check the next plot...")
 				
@@ -649,7 +660,7 @@ e$wd_rcv <- getwd()
 				dev.off()
 				message("| Please look to the plot zone for ", word, "'s Association Plot. \n")
 				message(paste('| "',word, '_AssociationPlot.pdf" is exported. \n', sep = ""))
-				opt <- TMV.Q(index = 9)
+				opt <- e$TMV.Q(index = 9)
 				if(toupper(opt) == "Y") break
 			}
 		}
@@ -675,7 +686,7 @@ e$wd_rcv <- getwd()
 			# Question 5.4: No. of Clusters
 			# Input: No. of clusters
 			# Output: e$no.clust, numeric vector of length 1
-			clustterm <- TMV.Q(index = 8)
+			clustterm <- e$TMV.Q(index = 8)
 			message("| The main ", clustterm, " clusters are plotted in red rectangles.")
 			rect.hclust(fit, k = clustterm)
 			dev.copy(png, "rect.dendrogram.png", width = 1000, height = 1000, units = "px")
@@ -683,7 +694,7 @@ e$wd_rcv <- getwd()
 			# rect.hclust(tree, k = NULL, which = NULL, x = NULL, h = NULL,
 			#             border = 2, cluster = NULL)
 			
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
 	}
@@ -695,7 +706,7 @@ e$wd_rcv <- getwd()
 				"",sep = "\n")
 		repeat{
 			dtmm2 <- t(tdmm)
-			e$clustdoc <- TMV.Q(index = 8)
+			e$clustdoc <- e$TMV.Q(index = 8)
 			set.seed(122)
 			kmeansResult <- kmeans(dtmm2, centers = e$clustdoc)
 			centers <- kmeansResult$centers
@@ -723,7 +734,7 @@ e$wd_rcv <- getwd()
 			}
 			cat("\n")
 			
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
 	}
@@ -737,7 +748,7 @@ e$wd_rcv <- getwd()
 		dtm2 <- dtm2[-which(rowSums(as.matrix(dtm2))==0), ]
 		repeat{
 			# library(topicmodels)
-			ans6_1 <- TMV.Q(index = 10)
+			ans6_1 <- e$TMV.Q(index = 10)
 			e$topicn <- ans6_1[1]
 			e$termn <- ans6_1[2]
 			lda <- LDA(dtm2, k = e$topicn) # find 8 topics
@@ -754,7 +765,7 @@ e$wd_rcv <- getwd()
 			# qplot(date, ..count.., data=topics, geom="density",
 			#       fill=term[topic], position="stack")
 			
-			opt <- TMV.Q(index = 9)
+			opt <- e$TMV.Q(index = 9)
 			if(toupper(opt) == "Y") break
 		}
 	}
@@ -786,7 +797,7 @@ TMV <- function(){
   # STEP 1 Input data
   # check ncol == 1
   # df <- na.omit(df)
-  e$raw <- TMV.Q(index = 1)
+  e$raw <- e$TMV.Q(index = 1)
 	# output: e$raw
   
 	#--------------------------------------------------------------------------------
@@ -831,54 +842,56 @@ TMV <- function(){
 						# default method: prevalent, takes the most frequent match as completion
 						# risking of changing some words which don't need heuristic completion of stemming
 						"stemCompletion.csv", row.names = FALSE)
-	repeat{
-	  message('| Some words seem strange after stemmed by R. ')
-	  opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
-	  cat("\n")
-	  if(!toupper(opt) %in% c("Y", "N")){
-	    message('| Only "Y" or "N" is acceptable! \n')
-	  } else if(toupper(opt) == "N") {
-	    break
-  	} else if(toupper(opt) == "Y") {  	  
-  	  message('| A *.csv file named "stemCompletion.csv" is exported. ')
-  	  message('| Please open it in Excel, check and type the corresponding complete words ')
-  	  message('| on the 2nd column. Keep the 1st column words as they are. ')
-  	  message("| If you input spaces, they'll be removed in later process. \n")
-  	  readline("| Make sure you have saved the changes in the Excel... \n")
+  message('| A *.csv file named "stemCompletion.csv" is exported. \n')
+	
+	# repeat{
+	  # message('| Some words seem strange after stemmed by R. ')
+	  # opt <- readline("| Would you like to resume some stems to complete words(Y/N)? ")
+	  # cat("\n")
+	  # if(!toupper(opt) %in% c("Y", "N")){
+	    # message('| Only "Y" or "N" is acceptable! \n')
+	  # } else if(toupper(opt) == "N") {
+	    # break
+  	# } else if(toupper(opt) == "Y") {  	  
+  	  # message('| Please open it in Excel, check and type the corresponding complete words ')
+  	  # message('| on the 2nd column. Keep the 1st column words as they are. \n')
+  	  # readline("| Make sure you have saved the changes in the Excel... \n")
   	  
-  	  e$inwords <- read.csv("stemCompletion.csv", stringsAsFactors = FALSE)
-  	  comwords <- e$inwords
-  	  message("| Your type is imported. \n")
-  	  # comwords <- apply(e$inwords, c(1, 2), function(x, from, to) gsub(from, to, x), " ", "")
-  	  # comwords <- as.data.frame(comwords, row.names = rownames(comwords), stringsAsFactors = FALSE)
-  	  comwords[which(comwords[, 2] == ""), 2] <- NA
-  	  comwords <- na.omit(comwords)
-  	  comwords <- comwords[which(comwords[, 1] != comwords[, 2]), ]
-  	  e$comwords <- comwords[order(comwords[[3]], decreasing = TRUE), ]
+  	  # e$inwords <- read.csv("stemCompletion.csv", stringsAsFactors = FALSE)
+  	  # comwords <- e$inwords
+  	  # message("| Your type is imported. \n")
+  	  # # comwords <- apply(e$inwords, c(1, 2), function(x, from, to) gsub(from, to, x), " ", "")
+  	  # # comwords <- as.data.frame(comwords, row.names = rownames(comwords), stringsAsFactors = FALSE)
+  	  # comwords[which(comwords[, 2] == ""), 2] <- NA
+  	  # comwords <- na.omit(comwords)
+  	  # comwords <- comwords[which(comwords[, 1] != comwords[, 2]), ]
+  	  # e$comwords <- comwords[order(comwords[[3]], decreasing = TRUE), ]
   	  
-  	  message("| ", nrow(e$comwords), " words are chosen to be changed, ")
-  	  message("| in decending order are printed below. \n")
-  	  print(e$comwords[if(nrow(e$comwords) > 30) 1:30 else 1:nrow(e$comwords), ])
-  	  cat("\n")
+  	  # message("| ", nrow(e$comwords), " words are chosen to be changed, ")
+  	  # message("| in decending order are printed below. \n")
+  	  # print(e$comwords[if(nrow(e$comwords) > 30) 1:30 else 1:nrow(e$comwords), ])
+  	  # cat("\n")
   	  
-  	  # Satisfactory question
-  	  opt <- TMV.Q(index = 9)
-  	  if(opt == "Y") {
-  	    for(i in 1:nrow(e$comwords)) {
-  	      e$corpus0 <- e$corpus0                                        %>% 
-  	        tm_map(change, from = e$comwords[i, 1], 
-  	               to = paste(" ", e$comwords[i, 1], " ", sep = ""))    %>%
-  	        tm_map(change, from = paste(" ", e$comwords[i, 1], " ", sep = ""), 
-  	               to = e$comwords[i, 2])
-  	    }
-  	    e$tdm0 <- TermDocumentMatrix(tm_map(e$corpus0, stripWhitespace))
-  	    e$tdmm0 <- as.matrix(e$tdm0)
-  	    freq0 <- rowSums(e$tdmm0)
-  	    e$freq0 <- freq0[order(freq0, decreasing = TRUE)]
-  	    break
-  	  }
-  	}
-	}
+  	  # # Satisfactory question
+  	  # opt <- e$TMV.Q(index = 9)
+  	  # if(opt == "Y") {
+  	    # for(i in 1:nrow(e$comwords)) {
+  	      # e$corpus0 <- e$corpus0                                        %>% 
+  	        # # tm_map(change, from = e$comwords[i, 1], 
+  	        # #        to = paste(" ", e$comwords[i, 1], " ", sep = ""))    %>%
+  	        # tm_map(change, from = e$comwords[i, 1], 
+										# to = e$comwords[i, 2])                              %>% 
+						# tm_map(change, from = paste(e$comwords[i, 1], "$", sep = ""), 
+										# to = e$comwords[i, 2])
+  	    # }
+  	    # e$tdm0 <- TermDocumentMatrix(tm_map(e$corpus0, stripWhitespace))
+  	    # e$tdmm0 <- as.matrix(e$tdm0)
+  	    # freq0 <- rowSums(e$tdmm0)
+  	    # e$freq0 <- freq0[order(freq0, decreasing = TRUE)]
+  	    # break
+  	  # }
+  	# }
+	# }
 	
 	#--------------------------------------------------------------------------------
   # STEP 3 Descriptive Analysis
@@ -930,11 +943,11 @@ TMV <- function(){
     ggtitle("Word Frequency - Top 40")           						    									+
     ylab("Frequency")                             						    								+
     xlab("Word")																																	+
-		#geom_hline(aes(yintercept = mean(e$freq0)), colour = "red")									+
+		geom_hline(aes(yintercept = mean(e$wf0$freq)), colour = "red")								+
 		# geom_hline(aes(yintercept = summary(e$freq0)[[2]]), colour = "grey")				+
 		# geom_hline(aes(yintercept = summary(e$freq0)[[5]]), colour = "grey")				+
-		#annotate("text", 40, mean(e$freq0)+1, size = 3,
-		#				 label = paste("Mean =", round(mean(e$freq0), 2)))										+
+		annotate("text", 40, mean(e$wf0$freq)+1, size = 3,
+						 label = paste("Mean =", round(mean(e$wf0$freq), 2)))										+
 		# annotate("text", 20.8, summary(e$freq0)[[2]]+1, size = 3,
 		# 				 label = paste("1st Quartile:", summary(e$freq0)[[2]]))							+
 		# annotate("text", 20.8, summary(e$freq0)[[5]]+1, size = 3,
@@ -963,7 +976,7 @@ TMV <- function(){
 	# Question 4.1: Add Additional Stopwords
 	# input: N - do not add stopwords, c("word1", "word2", ...) - a string of stopwords
 	# output: e$stops, character vector, a vector of additional stopwords 
-	e$stops <- TMV.Q(index = 2)
+	e$stops <- e$TMV.Q(index = 2, words = names(e$freq0))
   
 	if(length(e$stops) == 0){
 	  e$tdm1 <- e$tdm0
@@ -996,16 +1009,17 @@ TMV <- function(){
         "|  SECTION 0. REMOVE SPARSE WORDS",
         paste("|", paste(rep("*",32), collapse = "")),
         "", sep = "\n")
+    message("| Sparsity is the proportion of a word that appears 0 times across all documents. \n")
+		e$spar.example()
+		cat("\n")
+		
     repeat{
-      message("| Sparsity is the proportion of a word that appears 0 times across all documents. \n")
-			e$spar.example()
-			
 			message("| All the following analysis is based on the data which is cleaned up ")
 			message("| by removing the sparse terms according to the sparsity you type in. \n")
 			message("| The summary of sparsity is as follows: ")
 			print(summary(e$spars_v))
 			cat("\n")
-      e$spars <- TMV.Q(index = 3, spars_range = e$spars_v)
+      e$spars <- e$TMV.Q(index = 3, spars_range = e$spars_v)
       
       e$tdm2 <- removeSparseTerms(e$tdm1, e$spars)
       colnames(e$tdm2) <- as.character(1:ncol(e$tdm2))
@@ -1025,7 +1039,7 @@ TMV <- function(){
       print(summary(e$freq2))
       cat("\n")
       
-      opt <- TMV.Q(index = 9)
+      opt <- e$TMV.Q(index = 9)
       if(toupper(opt) == "Y") break
     }
     
@@ -1059,7 +1073,7 @@ TMV <- function(){
     # remarks: small loops, ask preferred parameters for plots, 
     #          if satisfied, save useful objects for final output
 		repeat{
-			opt <- TMV.Q(index = 11)
+			opt <- e$TMV.Q(index = 11)
 			if(opt == 0){
 				break
 			}else if(opt == 1){
@@ -1069,7 +1083,7 @@ TMV <- function(){
 				# Input: No. of columns
 				# Output: e$ncol_freq, numeric vector of length 1
 				
-				e$freq.plot(data = e$wf2, top_freq = e$ncol_freq, new_freq = e$freq0, chart1 = e$p1)
+				e$freq.plot(data = e$wf2, chart1 = e$p1)
 			}else if(opt == 2){
 				# 2. Word Cloud: min.freq? defualt: rot.per=.3, random.order=F
 				e$wordclouds(data = e$wf2)
