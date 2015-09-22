@@ -2,7 +2,7 @@
 # STEP 0.1
 # Download all related packages
 all.pcg <- c("rJava", "xlsxjars", "xts", "xlsx", 
-             "car", "MASS","plyr","lmtest","zoo", "plyr", "tidyr", "dplyr",
+             "car", "MASS", "lmtest", "zoo", "plyr", "tidyr", "dplyr",
              "lubridate", "ggplot2", "Rcpp", "colorspace")
 
 req.pkg <- function(pkg){
@@ -404,10 +404,59 @@ recom <- function(pred, resp, df, type, fit = NULL, st.row){
 #=====================================================================
 
 #---------#
+# hmodif() #
+#---------#
+
+hmodif <- function(pred, resp, data){
+  #---------------------------------
+  # transform specified variable with(out) parameters
+  # this function returns **a dataset** with selected variable transformed
+  # make sure the raw data is already loaded into global environment
+  #---------------------------------
+  # pred: the name of variable to be transormed of class "character"
+	# resp: the name of the respondent variable of the model
+  # data: data frame to store the variable transformed (original var. will be covered)
+  #---------------------------------
+
+	
+  df <- data
+    
+	if(substr(pred, nchar(pred)-3, nchar(pred)) == ".PRE"){
+		for(i in which(data[[pred]] == 1)){
+			if(i < 4){
+				df[[pred]][i] <- mean(data[[resp]][(i+3):(i+6)], na.rm = TRUE)
+			}else{
+				df[[pred]][i] <- mean(c(data[[resp]][(i-4):(i-1)], data[[resp]][(i+3):(i+6)]), na.rm = TRUE)
+			}
+		}
+	}else if(substr(pred, nchar(pred)-3, nchar(pred)) == "POST"){
+		for(i in which(data[[pred]] == 1)){
+			if(i < 6){
+				df[[pred]][i] <- mean(data[[resp]][(i+1):(i+4)], na.rm = TRUE)
+			}else{
+				df[[pred]][i] <- mean(c(data[[resp]][(i-6):(i-3)], data[[resp]][(i+1):(i+4)]), na.rm = TRUE)
+			}
+		}
+	}else{
+		for(i in which(data[[pred]] == 1)){
+			if(i < 5){
+				df[[pred]][i] <- mean(data[[resp]][(i+2):(i+5)], na.rm = TRUE)
+			}else{
+				df[[pred]][i] <- mean(c(data[[resp]][(i-5):(i-2)], data[[resp]][(i+2):(i+5)]), na.rm = TRUE)
+			}
+		}
+	}
+
+  return(df)
+}
+
+#=====================================================================
+
+#---------#
 # modif() #
 #---------#
 
-modif <- function(pred, data, tm.prmt){
+modif <- function(pred, resp, data, tm.prmt){
   #---------------------------------
   # transform specified variable with(out) parameters
   # this function returns **a dataset** with selected variable transformed
@@ -424,7 +473,9 @@ modif <- function(pred, data, tm.prmt){
   sc.1 <- tm.prmt[[3]]
   sc.2 <- tm.prmt[[4]]
   
-  if(is.na(co.r)){
+	if(co.r == 1 & pc.r == 1){
+		df <- hmodif(pred, resp, data)
+	}else if(is.na(co.r)){
     df[[pred]] <- data[[pred]]
   }else if(is.na(pc.r)){
     df[[pred]] <- cs(data[[pred]], co.r, sc.1, sc.2)
@@ -500,12 +551,13 @@ questions <- function(index, pred = NULL, df = NULL, coef = NULL, opt = NULL){
               "|  1. carry over + S curve",
               "|  2. carry over + power curve",
               "|  3. auto-selection between 1 and 2",
+							"|  4. scale modification for holidays",
               "",
               "|  0. no transformation", "", sep="\n")
       opt <- readline("| Please enter an option: ")
       cat("\n")
-      if(!opt %in% as.character(0:3)){
-        message("| Only the number between 0 and 3 is acceptable, dude!\n")
+      if(!opt %in% as.character(0:4)){
+        message("| Only the number between 0 and 4 is acceptable, dude!\n")
       }else{
         opt <- as.numeric(opt)
         break
@@ -754,7 +806,7 @@ rebuild <- function(resp, data, st.row) {
     sc.1 <- prmt.alive[[4]][i]
     sc.2 <- prmt.alive[[5]][i]
     
-    df0 <- modif(pred, df0, c(co.r, pc.r, sc.1, sc.2))
+    df0 <- modif(pred, resp, df0, c(co.r, pc.r, sc.1, sc.2))
   }
   e$df0 <- df0
   e$df1 <- df0[st.row:dim(df0)[1], ]
@@ -1277,7 +1329,16 @@ StepReg <- function(){
   e$df1 <- e$df0[e$st.row:nrow(e$df0), ]
   
   # Check the correlations
-  check.cor(e$data[e$st.row:nrow(e$data),-which(colnames(e$data) == e$tvar)])
+  repeat{
+    cor.opt <- readline("| Do you want to check correlations between variables (Y/N)? ")
+    cat("\n")
+    if(!toupper(cor.opt) %in% c("Y", "N")){
+      message("| Only Y/y and N/n is acceptable!\n")
+    } else if (toupper(cor.opt) == "Y") {
+      check.cor(e$data[e$st.row:nrow(e$data),-which(colnames(e$data) == e$tvar)])
+      break
+    } else break
+  }
   
   # STEP 1.6 
   # rebuild the model if any model existed already
@@ -1285,7 +1346,7 @@ StepReg <- function(){
     rec <- readline("| Do you want to continue testing an existed model (Y/N)? ")
     cat("\n")
     if (!toupper(rec) %in% c("Y","N")){
-      message("| Please only enter Y or N!\n")
+      message("| Only Y/y and N/n is acceptable!\n")
     } else if (toupper(rec) == "Y"){
         rebuild(e$resp, e$data, e$st.row)
         loop.output(e$resp, e$df1, e$fit1, pred = NULL, e$tvar)
@@ -1306,11 +1367,22 @@ StepReg <- function(){
           e$tm <- questions(3, pred = e$pred) 
           if(e$tm %in% 1:3){ # 0-no trans; 1-s curve; 2-power curve; 3-1 or 2
             e$tm.prmt <- recom(e$pred, e$resp, e$df0, e$tm, e$fit1, e$st.row)
-            e$df.temp0 <- modif(e$pred, e$df0, e$tm.prmt)
+            e$df.temp0 <- modif(e$pred, e$resp, e$df0, e$tm.prmt)
           } else if(e$tm == 0){
             e$tm.prmt <- rep(NA, 4)
             e$df.temp0 <- e$df0
-          }
+          } else if(e$tm == 4){
+						if(!all(e$df0[[e$pred]] %in% 0:1)){
+							message("| The predictor contains values besides 0 or 1! ")
+							message("| The transformation method is changed to No Transformation! \n")
+							e$tm <- 0
+							e$tm.prmt <- rep(NA, 4)
+							e$df.temp0 <- e$df0
+						} else {
+							e$tm.prmt <- rep(1, 4)
+							e$df.temp0 <- modif(e$pred, e$resp, e$df0, e$tm.prmt)
+						}
+					}
           e$df.temp1 <- e$df.temp0[e$st.row:nrow(e$df.temp0), ]
           e$fit.temp <- trial(e$df.temp1, e$resp, e$fit1, action = 1, e$pred)
             
@@ -1329,7 +1401,7 @@ StepReg <- function(){
                 e$tm.prmt <- questions(7)
               }
               
-              e$df.temp0 <- modif(e$pred, e$df0, e$tm.prmt)
+              e$df.temp0 <- modif(e$pred, e$resp, e$df0, e$tm.prmt)
               e$df.temp1 <- e$df.temp0[e$st.row:nrow(e$df.temp0), ]
               e$fit.temp <- trial(e$df.temp1, e$resp, e$fit1, action = 1, e$pred)             
             } else break # if(e$a_stsf %in% 2:4){ 
