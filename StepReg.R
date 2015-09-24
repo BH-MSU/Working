@@ -473,10 +473,10 @@ modif <- function(pred, resp, data, tm.prmt){
   sc.1 <- tm.prmt[[3]]
   sc.2 <- tm.prmt[[4]]
   
-	if(co.r == 1 & pc.r == 1){
-		df <- hmodif(pred, resp, data)
-	}else if(is.na(co.r)){
+	if(is.na(co.r)){
     df[[pred]] <- data[[pred]]
+	}else	if(co.r == 1){
+	  df <- hmodif(pred, resp, data)
   }else if(is.na(pc.r)){
     df[[pred]] <- cs(data[[pred]], co.r, sc.1, sc.2)
   }else{
