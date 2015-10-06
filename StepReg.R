@@ -9,7 +9,7 @@ req.pkg <- function(pkg){
   new.pkg <- pkg[(!(pkg %in% installed.packages()[, "Package"]))|
                    (pkg %in% old.packages()[, "Package"])]
   if (length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
-  sapply(pkg, require, 
+  sapply(pkg, library, 
          quietly = TRUE, warn.conflicts = FALSE, character.only = TRUE)
 }
 
@@ -1037,41 +1037,45 @@ loop.output <- function(resp, data, fit, pred, tvar) {
 # final.output() #
 #----------------#
 
-final.output <- function(resp, data, tvar, fit, prmt, aic = FALSE) {
+final.output <- function(resp, data, rawdata, tvar, fit, prmt, aic = FALSE) {
   # prmt is a dataframe including 8 columns: 
   #       variable, trans.meth, co.r, sc.1, sc.2, pc.r, oth, status
   # data = df1 # Transformed Data
   
   # Needed Packages: "MASS" for stepAIC(), "car" for vif(), "xlsx" for export
   # these 3 packages will be loaded outside this function
-  
+    
+  if(aic) aic.ind <- "aic." else aic.ind <- NULL
   # 1.Transformation (trans.meth, co.r, sc.1, sc.2, pc.r, oth)
   # directly output as a csv file
-  
-  if(aic) aic.ind <- "aic." else aic.ind <- NULL
-  
-  # put 2, 3, 4 into one data frame, and then output into a csv file
-  
-  # 2. Residuals
-  resid <- cbind(data[, c(tvar, resp)], fit$fitted.values, summary(fit)$residuals)
-  rownames(resid) <- NULL
-  colnames(resid) <- c(tvar, resp, "Prediction", "Residuals")
-  
-  # 3. Coefficients
+	# prmt.csv: for convenience of importing model next time
+	write.csv(prmt, paste(aic.ind, "prmt.csv", sep = ""), row.names = FALSE)
+	message(paste('| The variable parameters history is exported to "',
+								paste(aic.ind, "prmt.csv", sep = ""),
+								'". ',sep=""))
+	cat(paste(rep("-+-",20),collapse=""),"\n\n")
+
+  # 2. Coefficients
   coef <- coef(summary(fit))     # Estimate  Std. Error    t value   Pr(>|t|)
   
-  # 4. VIF
+  # 3. VIF
   if(length(coef(fit)) > 2) {
     vif <- vif(fit)
   } else {
     vif <- NA
   }
   
-  # 5. Contribution    
+  # 4. Contribution    
   simulation <- cbind(coef(fit)[1], t(t(as.matrix(data[, names(coef(fit))[-1]])) * as.vector(coef(fit)[-1])))
   colnames(simulation) <- names(coef(fit))
   contri.d <- colSums(simulation)/sum(fit$fitted.values)
-  
+
+  # 5. Residuals
+  resid <- cbind(data[, c(tvar, resp)], fit$fitted.values, summary(fit)$residuals)
+  rownames(resid) <- NULL
+  colnames(resid) <- c(tvar, resp, "Prediction", "Residuals")
+	resid <- cbind(resid, simulation)
+	
   # Merge model information into one data frame
   # Output csv
   pos <- which(colnames(prmt) == "status")
@@ -1087,33 +1091,64 @@ final.output <- function(resp, data, tvar, fit, prmt, aic = FALSE) {
   names(model) <- c("variable", "coefficient", "co.r", "pc.r",	"sc.1", "sc.2", 
                     "std.error", "t.value", "p.value", "vif", "contribution")
   
+	# Make convenience for EFFICIENCY Calculation
+	repeat{
+		message("| Pls input the variables which are needed to calculate EFFICIENCY: ")
+		message("| If none, press <Enter> without typing any letters. ")
+		effi <- readline('| Please specify (use comma "," to split variable names): ')
+		cat("\n")
+		effivar <- strsplit(gsub(" ", "", toupper(effi)), ",")[[1]]
+		if(!all(effivar %in% names(coef(fit)))) {
+			message("| Some variables you specified doesn't exist in the model! \n")
+		} else break
+	}
+	
+  zerodf <- data.frame(matrix(data = 0, nrow = 54, ncol = length(effivar)), stringsAsFactors = FALSE)
+  colnames(zerodf) <- effivar
+  effidfraw <- rbind(rawdata[, effivar], zerodf)
+	effidf <- effidfraw
+	# prmt is a dataframe including 8 columns: 
+  #       variable, trans.meth, co.r, sc.1, sc.2, pc.r, oth, status
+	for(var in effivar){
+		tm.prmt <- dplyr::filter(prmt.alive, variable == var)[2:5]
+		co.r <- tm.prmt[[1]]
+		pc.r <- tm.prmt[[2]]
+		sc.1 <- tm.prmt[[3]]
+		sc.2 <- tm.prmt[[4]]
+	
+		if(is.na(co.r)){
+			effidf[[var]] <- effidf[[var]]
+		}else	if(co.r == 1){
+			effidf <- hmodif(var, resp, effidf)
+		}else if(is.na(pc.r)){
+			effidf[[var]] <- cs(effidf[[var]], co.r, sc.1, sc.2)
+		}else{
+			effidf[[var]] <- cp(effidf[[var]], co.r, pc.r)
+		}
+		effidf[[var]] <- effidf[[var]]*coef(fit)[var]
+	}
+	
   # --------------------------------------------------------------------------
   
   if(suppressMessages(require(xlsx))){
     wb <- createWorkbook()
     
     sht1 <- createSheet(wb, sheetName = "Model_Results")
-    sht2 <- createSheet(wb, sheetName = "Parameters")
-    sht3 <- createSheet(wb, sheetName = "Residuals")
-    sht4 <- createSheet(wb, sheetName = "Transformed_Data")
+    sht2 <- createSheet(wb, sheetName = "Residuals")
+    sht3 <- createSheet(wb, sheetName = "Raw_Data")
+		sht4 <- createSheet(wb, sheetName = "Efficiency")
+    sht5 <- createSheet(wb, sheetName = "Parameters")
     
     addDataFrame(model, row.names = FALSE, sht1)
-    addDataFrame(prmt, row.names = FALSE, sht2)
-    addDataFrame(resid, row.names = FALSE, sht3)
-    addDataFrame(data, row.names = FALSE, sht4)
+    addDataFrame(resid, row.names = FALSE, sht2)
+    addDataFrame(rawdata[, c(tvar, resp, names(coef(fit))[-1])], row.names = FALSE, sht3)
+		addDataFrame(effidf, sht4)
+    addDataFrame(prmt, row.names = FALSE, sht5)
     
-    saveWorkbook(wb, paste("model_result", ifelse(aic, "_aic", ""), 
-                           ".xlsx", sep = ""))
+    saveWorkbook(wb, paste("model_result", ifelse(aic, "_aic", ""), ".xlsx", sep = ""))
     message('| The model results are saved as "model_result',ifelse(aic, "_aic", ""),
             '.xlsx".')
-    
-    # prmt.csv: for convenience of importing model next time
-    write.csv(prmt, paste(aic.ind, "prmt.csv", sep = ""), row.names = FALSE)
-    message(paste('| The variable parameters history is exported to "',
-                  paste(aic.ind, "prmt.csv", sep = ""),
-                  '". ',sep=""))
-    cat(paste(rep("-+-",20),collapse=""),"\n\n")
-    
+
   }else{
     # 1. residuals.csv
     write.csv(resid, paste(aic.ind, "residuals.csv", sep = ""), row.names = FALSE)
@@ -1122,25 +1157,25 @@ final.output <- function(resp, data, tvar, fit, prmt, aic = FALSE) {
                         '". ', sep=""), sep="\n"))
     cat(paste(rep("-+-",20),collapse=""))
     
-    # 2. prmt.csv
-    write.csv(prmt, paste(aic.ind, "prmt.csv", sep = ""), row.names = FALSE)
-    message(paste('Variable parameters history is exported to "',
-                  paste(aic.ind, "prmt.csv", sep = ""),
-                  '"',sep=""))
-    cat(paste(rep("-+-",20),collapse=""))
     
     # 3. model.results.csv
     write.csv(model, paste(aic.ind, "model.results.csv", sep = ""), row.names = FALSE)
     message(paste('The modeling result is exported to "', 
                   paste(aic.ind, "model.results.csv", sep = ""),'".',sep=""))
-    cat(paste(rep("-+-",20),collapse=""),"\n\n")
+    cat(paste(rep("-+-",20),collapse=""),"\n")
     
     # 4. transformed.data.csv
     # output transformed data to local file
-    # write.csv(data[, c(resp, as.character(prmt.alive[, 1]))], "transformed.data.csv")
-    write.csv(data, "transformed.data.csv")
-    
-    # print(summary(stepAIC(fit, direction = "both", trace = 0)))  
+    write.csv(rawdata[, c(tvar, resp, names(coef(fit))[-1])], paste(aic.ind, "transformed.data.csv", sep = ""))
+		message(paste('The transformed data is exported to "', 
+							paste(aic.ind, "transformed.data.csv", sep = ""),'".',sep=""))
+    cat(paste(rep("-+-",20),collapse=""),"\n")
+		
+		# 5. efficiency.csv
+		write.csv(effidf, paste(aic.ind, "efficiency.csv", sep = ""))
+		message(paste('The efficiency calculation is exported to "', 
+							paste(aic.ind, "efficiency.csv", sep = ""),'".',sep=""))
+    cat(paste(rep("-+-",20),collapse=""),"\n")
   }
 } # end of function final.output()
 
@@ -1438,7 +1473,7 @@ StepReg <- function(){
         e$prmt[which((e$prmt[[1]] == e$pred) & (e$prmt[[6]] == "alive")), 6] <- "dead"
       } # else if(e$a_conf == "N") do nothing
     } else if(a_nm == 3){ # 3. Stop modeling
-      final.output(e$resp, e$df1, e$tvar, e$fit1, e$prmt, questions(10))
+      final.output(e$resp, e$df1, e$data, e$tvar, e$fit1, e$prmt, questions(10))
       break
     }
   }

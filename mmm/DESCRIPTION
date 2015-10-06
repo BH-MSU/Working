@@ -1,0 +1,18 @@
+Package: mmm
+Type: Package
+Title: Market Mix Modeling
+    (Title Case)
+Version: 0.1
+Date: 2015-10-06
+Authors@R: c(person("Mingmin", "Zhu", email = "zhu.mingmin@thebluehive.com", role
+    = c("cre", "aut")), person("Katherine", "Hou", email = "katherine.hou@thebluehive.com",
+    role = "aut"))
+Author: Mingmin Zhu [aut, cre], Katherine Hou [aut]
+Maintainer: Katherine Hou <katherine.hou@thebluehive.com>
+Imports: rJava, car, lmtest, plyr, dplyr, lubridate, ggplot2, grid, magrittr
+Description: Give recommendation of the best transform method for media spending variables.
+    Build linear regression model for enquiries / traffic as response variable and media spending,
+    GRP or other monitored variables as predictors.
+License: GPL (>= 2)
+LazyData: FALSE
+RoxygenNote: 5.0.1
