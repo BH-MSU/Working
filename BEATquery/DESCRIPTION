@@ -1,0 +1,16 @@
+Package: BEATquery
+Type: Package
+Title: Query Dictionary for BEAT database
+    (Title Case)
+Version: 0.1
+Date: 2016-01-28
+Authors@R: c(person("Mingmin", "Zhu", email = "zhu.mingmin@thebluehive.com", role
+    = c("cre", "aut")), person("Katherine", "Hou", email = "katherine.hou@thebluehive.com",
+    role = "aut"))
+Author: Mingmin Zhu [aut, cre], Katherine Hou [aut]
+Maintainer: Katherine Hou <katherine.hou@thebluehive.com>
+Imports: RMySQL, dplyr
+Description: Build most used query dictionary for BEAT database. 
+License: GPL (>= 2)
+LazyData: FALSE
+RoxygenNote: 5.0.1
